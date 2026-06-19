@@ -42,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()  // ← 여기 끼워넣기
                         .requestMatchers("/favicon.ico", "/error").permitAll()
+                        .requestMatchers("/image/**").permitAll()   // ← 추가 (개발용)
                         // 그 외 전부 인증 필요 (로그인 후 접근)
                         .anyRequest().authenticated()
                 )

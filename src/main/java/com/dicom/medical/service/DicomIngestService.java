@@ -31,6 +31,7 @@ public class DicomIngestService {
     public Long ingest(InputStream in) throws IOException {
         try (DicomInputStream dis = new DicomInputStream(in)) {
             Attributes attrs = dis.readDataset();          // 읽기
+            String tsuid = dis.getTransferSyntax();         // 저장 시 재기록용
             validate(attrs);                                // 검증
             deidentifyService.deidentify(attrs);            // de-id (지금 no-op)
 
@@ -40,7 +41,7 @@ public class DicomIngestService {
             if (existing.isPresent()) return existing.get().getId();
 
             DicomImage image = toEntityGraph(attrs);        // 분해 + 계층 upsert
-            image.setS3Key(storageService.store(attrs));    // 지금 null (스텁)
+            image.setS3Key(storageService.store(attrs, tsuid)); // 로컬 저장 → 상대 키
 
             return imageRepository.save(image).getId();     // DB 저장 → id
         }

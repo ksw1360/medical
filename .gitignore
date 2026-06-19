@@ -37,4 +37,6 @@ out/
 .vscode/
 
 samples/
+images/
+./dicom-store
 .env

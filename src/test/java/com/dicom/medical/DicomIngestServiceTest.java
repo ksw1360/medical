@@ -18,7 +18,7 @@ class DicomIngestServiceTest {
 
     @Test
     void ingestCrBreast() throws Exception {
-        var resource = new ClassPathResource("samples/CR_breast_001.dcm");
+        var resource = new ClassPathResource("samples/CR_breast_002.dcm");
         try (InputStream in = resource.getInputStream()) {
             Long id = ingestService.ingest(in);
             System.out.println(">>> 저장된 DicomImage id = " + id);
