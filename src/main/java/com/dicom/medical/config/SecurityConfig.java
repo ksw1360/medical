@@ -37,14 +37,15 @@ public class SecurityConfig {
 
                 // 경로별 접근 규칙
                 .authorizeHttpRequests(auth -> auth
-                        // 공개: 로그인/회원가입
+                                // 공개: 로그인/회원가입
 //                        .requestMatchers("/Test/**").permitAll() // Test 다 풀기
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/actuator/health").permitAll()  // ← 여기 끼워넣기
-                        .requestMatchers("/favicon.ico", "/error").permitAll()
-                        .requestMatchers("/image/**").permitAll()   // ← 추가 (개발용)
-                        // 그 외 전부 인증 필요 (로그인 후 접근)
-                        .anyRequest().authenticated()
+                                .requestMatchers("/auth/**").permitAll()
+                                .requestMatchers("/actuator/health").permitAll()  // ← 여기 끼워넣기
+                                .requestMatchers("/favicon.ico", "/error").permitAll()
+                                .requestMatchers("/image/**").permitAll()   // ← 추가 (개발용)
+                                .requestMatchers("/dicomweb/**").permitAll() // ← 추가 (업로드, 개발용)
+                                // 그 외 전부 인증 필요 (로그인 후 접근)
+                                .anyRequest().authenticated()
                 )
 
                 // 폼 로그인 / 기본 HTTP 인증 끔 (JWT만 쓸 거라)
