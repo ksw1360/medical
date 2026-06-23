@@ -1,28 +1,41 @@
 package com.dicom.medical.controller;
 
 import com.dicom.medical.service.InferenceService;
+import com.dicom.medical.service.ScWriter;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Path;
 
 /**
- * ③ 추론 API — 강의 04절 InferenceController.
- * 지금은 테스트하기 쉽게 .dcm 파일 경로를 직접 받는다.
- * (다음 단계 ⑤회신에서 sopInstanceUid → 저장경로 조회로 바꿀 예정)
+ * ③추론 + ④후처리 + ⑤회신 API.
+ * 추론 → 소견 도출 → 소견 번인한 SC 이미지를 새 UID로 저장.
  */
 @RestController
 @RequestMapping("/api/ai")
 public class InferenceController {
 
     private final InferenceService service;
-    private static final Path MODEL = Path.of("models/chest_classifier.onnx");
+    private final ScWriter scWriter;
+    private static final Path MODEL  = Path.of("models/chest_classifier.onnx");
+    private static final Path SC_DIR = Path.of("dicom-store/ai-sc");  // SC 저장 폴더
 
-    InferenceController(InferenceService s) { this.service = s; }
+    InferenceController(InferenceService s, ScWriter w) { this.service = s; this.scWriter = w; }
 
     @PostMapping("/infer")
-    public InferenceService.Result infer(@RequestBody InferRequest req) throws Exception {
-        return service.infer(Path.of(req.dicomPath()), MODEL);
+    public Response infer(@RequestBody InferRequest req) throws Exception {
+        Path src = Path.of(req.dicomPath());
+
+        // ③④ 추론 + 후처리
+        InferenceService.Result r = service.infer(src, MODEL);
+
+        // ⑤ 회신: 소견(영문) 번인한 SC 저장 — 새 SOP UID, 같은 Study UID
+        String findingEn = (r.abnormal() >= 0.5f ? "AI: Abnormal suspected" : "AI: Normal range")
+                + String.format(" (%d%%)", r.confidence());
+        Path scFile = scWriter.writeSc(src, findingEn, SC_DIR);
+
+        return new Response(r, scFile.toString());
     }
 
     record InferRequest(String dicomPath) {}
+    record Response(InferenceService.Result result, String scFile) {}
 }
