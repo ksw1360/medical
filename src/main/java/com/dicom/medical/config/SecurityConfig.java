@@ -44,6 +44,7 @@ public class SecurityConfig {
                                 .requestMatchers("/favicon.ico", "/error").permitAll()
                                 .requestMatchers("/image/**").permitAll()   // ← 추가 (개발용)
                                 .requestMatchers("/dicomweb/**").permitAll() // ← 추가 (업로드, 개발용)
+                                .requestMatchers("/api/ai/**").permitAll()   // ← 추가 (개발용)
                                 // 그 외 전부 인증 필요 (로그인 후 접근)
                                 .anyRequest().authenticated()
                 )
