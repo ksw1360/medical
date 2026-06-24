@@ -38,4 +38,9 @@ public class DicomStorageService {
             throw new UncheckedIOException("DICOM 저장 실패: " + key, e);
         }
     }
+
+    /** 상대 키(s3Key) → 실제 파일 절대경로 */
+    public Path resolve(String key) {
+        return basePath.resolve(key);
+    }
 }

@@ -26,16 +26,18 @@ public class InferenceController {
         Path src = Path.of(req.dicomPath());
 
         // ③④ 추론 + 후처리
-        InferenceService.Result r = service.infer(src, MODEL);
+        InferenceService.InferenceResult r = service.infer(src, MODEL);
+        //Result r = service.infer(src, MODEL);
 
         // ⑤ 회신: 소견(영문) 번인한 SC 저장 — 새 SOP UID, 같은 Study UID
         String findingEn = (r.abnormal() >= 0.5f ? "AI: Abnormal suspected" : "AI: Normal range")
-                + String.format(" (%d%%)", r.confidence());
+                //+ String.format(" (%d%%)", r.confidence());
+                + String.format(" (%.0f%%)", r.confidence() * 100);
         Path scFile = scWriter.writeSc(src, findingEn, SC_DIR);
 
         return new Response(r, scFile.toString());
     }
 
     record InferRequest(String dicomPath) {}
-    record Response(InferenceService.Result result, String scFile) {}
+    record Response(InferenceService.InferenceResult result , String scFile) {}
 }
