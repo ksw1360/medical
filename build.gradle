@@ -74,3 +74,9 @@ dependencyManagement {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+bootJar {
+	archiveBaseName = 'medical'      // 이름 부분
+	archiveVersion = ''              // 버전 빼기
+	// archiveClassifier = 'app'     // medical-app.jar 처럼 꼬리표
+}
