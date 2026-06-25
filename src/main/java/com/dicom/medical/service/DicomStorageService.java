@@ -24,8 +24,8 @@ public class DicomStorageService {
     /** de-id된 DICOM을 로컬에 저장하고, DB에 넣을 상대 키를 리턴 */
     public String store(Attributes attrs, String transferSyntax) {
         String key = attrs.getString(Tag.StudyInstanceUID) + "/"
-                   + attrs.getString(Tag.SeriesInstanceUID) + "/"
-                   + attrs.getString(Tag.SOPInstanceUID) + ".dcm";
+                + attrs.getString(Tag.SeriesInstanceUID) + "/"
+                + attrs.getString(Tag.SOPInstanceUID) + ".dcm";
         Path target = basePath.resolve(key);
         try {
             Files.createDirectories(target.getParent());

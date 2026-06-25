@@ -82,3 +82,16 @@ bootJar {
 	archiveVersion = ''              // 버전 빼기
 	// archiveClassifier = 'app'     // medical-app.jar 처럼 꼬리표
 }
+
+tasks.register('ebZip', Zip) {
+	dependsOn bootJar
+	archiveFileName = 'deploy.zip'
+	destinationDirectory = layout.buildDirectory.dir('eb')
+
+	// 빌드된 jar를 zip 루트에
+	from(bootJar.archiveFile)
+	// .platform 폴더를 zip 루트에 (nginx 설정 포함)
+	from('.platform') {
+		into '.platform'
+	}
+}

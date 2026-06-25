@@ -57,8 +57,17 @@ public class InferenceService {
     public void init() throws OrtException {
         env = OrtEnvironment.getEnvironment();
         OrtSession.SessionOptions opts = new OrtSession.SessionOptions();
-        // 모델 경로 — 프로젝트 루트 기준
-        session = env.createSession("models/chest_classifier.onnx", opts);
+
+        // 모델 — 클래스패스(jar 내부)에서 읽기. 로컬·EB 어디서든 동작.
+        try (var is = getClass().getResourceAsStream("/models/chest_classifier.onnx")) {
+            if (is == null) {
+                throw new IllegalStateException("모델 파일을 찾을 수 없음: /models/chest_classifier.onnx (src/main/resources/models/ 확인)");
+            }
+            byte[] modelBytes = is.readAllBytes();
+            session = env.createSession(modelBytes, opts);
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("모델 로딩 실패", e);
+        }
     }
 
     public InferenceResult infer(Preprocessor.Tensor tensor) throws OrtException {
