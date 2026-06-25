@@ -1,5 +1,7 @@
 package com.dicom.medical.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dcm4che3.imageio.plugins.dcm.DicomImageReadParam;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,9 @@ public class DicomPreviewController {
 
     /** 예: GET /api/ai/preview?path=dicom-store/ai-sc/2.25....dcm */
     @GetMapping("/preview")
+    @Tag(name = "AI 파이프라인 · 미리보기", description = "DICOM을 PNG로 렌더링해 화면 표시용 이미지 반환")
+    @Operation(summary = "DICOM → PNG 미리보기",
+            description = "지정한 영상을 PNG로 변환해 반환. 뷰어/데모 화면에서 원본 또는 AI 결과(SC) 영상을 띄울 때 사용.")
     public ResponseEntity<byte[]> preview(@RequestParam("path") String dcmPath) throws Exception {
         File file = new File(dcmPath);
         if (!file.exists()) return ResponseEntity.notFound().build();

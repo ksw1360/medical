@@ -2,6 +2,7 @@ package com.dicom.medical.controller;
 
 import com.dicom.medical.repository.DicomImageRepository;
 import com.dicom.medical.service.DicomStorageService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,7 @@ public class DicomPathController {
 
     /** GET /api/ai/path/{id} → {"path": "dicom-store/.../xxx.dcm"} */
     @GetMapping("/path/{id}")
+    @Tag(name = "AI 파이프라인 · 경로", description = "업로드 영상 ID → 서버 저장 파일 경로 변환 (추론 입력용)")
     public ResponseEntity<?> path(@PathVariable Long id) {
         return imageRepository.findById(id)
                 .map(img -> {

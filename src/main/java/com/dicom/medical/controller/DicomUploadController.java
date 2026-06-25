@@ -1,6 +1,8 @@
 package com.dicom.medical.controller;
 
 import com.dicom.medical.service.DicomIngestService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.dcm4che3.mime.MultipartParser;
@@ -17,6 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/dicomweb")
 @RequiredArgsConstructor
+@Tag(name = "DICOM 수신", description = "DICOM 파일 업로드 · 비식별 · 저장 (STOW-RS)")
 public class DicomUploadController {
 
     private final DicomIngestService ingestService;
@@ -24,6 +27,8 @@ public class DicomUploadController {
     /* ── 1) 내부/브라우저 업로드: multipart/form-data ──
        form-data 의 key 는 "files" (단건도 리스트로 받힘) */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "DICOM 업로드 / 수신",
+            description = "multipart로 .dcm 파일을 받아 PS3.15 비식별 처리 후 S3/로컬에 저장하고, 메타데이터를 4계층(Patient·Study·Series·Image)으로 영속화. 저장된 DicomImage id를 반환.")
     public ResponseEntity<List<Long>> upload(
             @RequestParam("files") List<MultipartFile> files) throws IOException {
 

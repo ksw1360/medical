@@ -2,6 +2,8 @@ package com.dicom.medical.controller;
 
 import com.dicom.medical.service.InferenceService;
 import com.dicom.medical.service.ScWriter;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Path;
@@ -22,6 +24,9 @@ public class InferenceController {
     InferenceController(InferenceService s, ScWriter w) { this.service = s; this.scWriter = w; }
 
     @PostMapping("/infer")
+    @Tag(name = "AI 추론", description = "ONNX 모델 기반 흉부 영상 정상/비정상 분류")
+    @Operation(summary = "AI 추론 실행",
+            description = "전처리 → ONNX 추론 → 후처리 파이프라인 실행 후 정상/비정상 확률, 판정 라벨, 신뢰도를 반환.")
     public Response infer(@RequestBody InferRequest req) throws Exception {
         Path src = Path.of(req.dicomPath());
 
