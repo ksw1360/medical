@@ -89,3 +89,12 @@ aws:
 dicom:
   storage:
     local-path: ./dicom-store
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha

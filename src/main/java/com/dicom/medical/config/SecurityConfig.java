@@ -45,6 +45,12 @@ public class SecurityConfig {
                                 .requestMatchers("/image/**").permitAll()   // ← 추가 (개발용)
                                 .requestMatchers("/dicomweb/**").permitAll() // ← 추가 (업로드, 개발용)
                                 .requestMatchers("/api/ai/**").permitAll()   // ← 추가 (개발용)
+                                .requestMatchers("/api/studies/**").permitAll()
+                                .requestMatchers(
+                                        "/swagger-ui/**",
+                                        "/swagger-ui.html",
+                                        "/v3/api-docs/**"
+                                ).permitAll()
                                 // 그 외 전부 인증 필요 (로그인 후 접근)
                                 .anyRequest().authenticated()
                 )

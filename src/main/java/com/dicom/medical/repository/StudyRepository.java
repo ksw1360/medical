@@ -1,9 +1,38 @@
 package com.dicom.medical.repository;
 
+import com.dicom.medical.dto.respond.StudyListResponse;
+import com.dicom.medical.dto.respond.StudyListView;
 import com.dicom.medical.entity.Study;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 import java.util.Optional;
 
 public interface StudyRepository extends JpaRepository<Study, Long> {
     Optional<Study> findByStudyInstanceUid(String studyInstanceUid);
+
+    @Query("""
+    SELECT s.id AS id,
+           s.studyInstanceUid AS studyInstanceUid,
+           s.studyDate AS studyDate,
+           s.studyDescription AS studyDescription,
+           p.patientId AS patientId,
+           MIN(se.modality) AS modality,
+           COUNT(DISTINCT img.id) AS imageCount
+    FROM Study s
+    LEFT JOIN s.patient p
+    LEFT JOIN Series se ON se.study = s
+    LEFT JOIN DicomImage img ON img.series = se
+    WHERE (:keyword IS NULL OR :keyword = ''
+           OR LOWER(s.studyDescription) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR s.studyInstanceUid LIKE CONCAT('%', :keyword, '%')
+           OR p.patientId LIKE CONCAT('%', :keyword, '%'))
+      AND (:modality IS NULL OR :modality = '' OR se.modality = :modality)
+    GROUP BY s.id, s.studyInstanceUid, s.studyDate, s.studyDescription, p.patientId
+    ORDER BY s.studyDate DESC
+""")
+    List<StudyListView> search(@Param("keyword") String keyword,
+                               @Param("modality") String modality);
 }
