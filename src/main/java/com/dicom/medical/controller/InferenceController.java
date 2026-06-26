@@ -1,5 +1,7 @@
 package com.dicom.medical.controller;
 
+import com.dicom.medical.entity.DicomImage;
+import com.dicom.medical.repository.DicomImageRepository;
 import com.dicom.medical.service.DicomStorageService;
 import com.dicom.medical.service.InferenceService;
 import com.dicom.medical.service.ScWriter;
@@ -7,8 +9,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * ③추론 + ④후처리 + ⑤회신 API.
@@ -25,12 +30,15 @@ public class InferenceController {
     private final InferenceService service;
     private final ScWriter scWriter;
     private final DicomStorageService storageService;
+    private final DicomImageRepository imageRepository;
     private static final Path MODEL = Path.of("models/chest_classifier.onnx");
 
-    InferenceController(InferenceService s, ScWriter w, DicomStorageService storage) {
+
+    InferenceController(InferenceService s, ScWriter w, DicomStorageService storage, DicomImageRepository imageRepository) {
         this.service = s;
         this.scWriter = w;
         this.storageService = storage;
+        this.imageRepository = imageRepository;
     }
 
     @PostMapping("/infer")
@@ -65,4 +73,48 @@ public class InferenceController {
 
     record InferRequest(String dicomPath) {}   // dicomPath = S3 key
     record Response(InferenceService.InferenceResult result, String scFile) {}  // scFile = S3 key
+
+    @PostMapping("/infer/series/{seriesId}")
+    @Tag(name = "AI 추론", description = "검사(Series) 전체 슬라이스 일괄 추론")
+    @Operation(summary = "Series 단위 AI 추론",
+            description = "한 Series의 모든 슬라이스를 추론하고 결과를 집계해 반환.")
+    public SeriesInferResponse inferSeries(@PathVariable Long seriesId) {
+        List<DicomImage> images = imageRepository.findBySeries_IdOrderByInstanceNumber(seriesId);
+        if (images.isEmpty()) throw new IllegalArgumentException("해당 Series에 영상이 없음: " + seriesId);
+
+        List<SliceResult> slices = new ArrayList<>();
+        for (DicomImage img : images) {
+            Path tmp = storageService.downloadToTemp(img.getS3Key());
+            try {
+                InferenceService.InferenceResult r = service.infer(tmp, MODEL);
+                slices.add(new SliceResult(
+//                        img.getInstanceNumber(),
+                        img.getInstanceNumber() == null ?  0 : img.getInstanceNumber(),
+                        img.getSopInstanceUid(),
+                        round(r.abnormal()), r.label()));
+            } catch (Exception e) {
+                // 깨진 슬라이스는 스킵하고 계속 (한 장 때문에 전체 실패 방지)
+                slices.add(new SliceResult(
+//                        img.getInstanceNumber(),
+                        img.getInstanceNumber() == null ?  0 : img.getInstanceNumber(),
+                        img.getSopInstanceUid(), -1f, "추론실패"));
+            } finally {
+                try { Files.deleteIfExists(tmp); } catch (IOException ignored) {}
+            }
+        }
+
+        // 집계
+        long abnormalCnt = slices.stream().filter(s -> s.abnormal() >= 0.5f).count();
+        float maxAbn = slices.stream().map(SliceResult::abnormal)
+                .filter(v -> v >= 0).max(Float::compare).orElse(0f);
+        String overall = abnormalCnt > 0 ? "이상 의심" : "정상";
+
+        return new SeriesInferResponse(seriesId, slices.size(), abnormalCnt, round(maxAbn), overall, slices);
+    }
+
+    private static float round(float v) { return Math.round(v * 1000) / 1000f; }
+
+    record SliceResult(int instanceNumber, String sopUid, float abnormal, String label) {}
+    record SeriesInferResponse(Long seriesId, int total, long abnormalCount,
+                               float maxAbnormal, String overall, List<SliceResult> slices) {}
 }
