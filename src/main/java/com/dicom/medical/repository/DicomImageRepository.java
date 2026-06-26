@@ -12,4 +12,7 @@ public interface DicomImageRepository extends JpaRepository<DicomImage, Long> {
 
     // 여러장의 DICOM File 처리
     List<DicomImage> findBySeries_IdOrderByInstanceNumber(Long seriesId);
+
+    // DicomImageRepository.java
+    List<DicomImage> findBySeries_Study_IdOrderByInstanceNumber(Long studyId);
 }

@@ -117,4 +117,35 @@ public class InferenceController {
     record SliceResult(int instanceNumber, String sopUid, float abnormal, String label) {}
     record SeriesInferResponse(Long seriesId, int total, long abnormalCount,
                                float maxAbnormal, String overall, List<SliceResult> slices) {}
+
+    @PostMapping("/infer/study/{studyId}")
+    @Tag(name = "AI 추론", description = "검사(Study) 전체 슬라이스 일괄 추론")
+    @Operation(summary = "Study 단위 AI 추론",
+            description = "한 Study의 모든 슬라이스를 추론하고 결과를 집계해 반환.")
+    public SeriesInferResponse inferStudy(@PathVariable Long studyId) {
+        List<DicomImage> images = imageRepository.findBySeries_Study_IdOrderByInstanceNumber(studyId);
+        if (images.isEmpty()) throw new IllegalArgumentException("해당 Study에 영상이 없음: " + studyId);
+
+        List<SliceResult> slices = new ArrayList<>();
+        for (DicomImage img : images) {
+            Path tmp = storageService.downloadToTemp(img.getS3Key());
+            try {
+                InferenceService.InferenceResult r = service.infer(tmp, MODEL);
+                slices.add(new SliceResult(
+                        img.getInstanceNumber() == null ? 0 : img.getInstanceNumber(),
+                        img.getSopInstanceUid(), round(r.abnormal()), r.label()));
+            } catch (Exception e) {
+                slices.add(new SliceResult(
+                        img.getInstanceNumber() == null ? 0 : img.getInstanceNumber(),
+                        img.getSopInstanceUid(), -1f, "추론실패"));
+            } finally {
+                try { Files.deleteIfExists(tmp); } catch (IOException ignored) {}
+            }
+        }
+        long abnormalCnt = slices.stream().filter(s -> s.abnormal() >= 0.5f).count();
+        float maxAbn = slices.stream().map(SliceResult::abnormal)
+                .filter(v -> v >= 0).max(Float::compare).orElse(0f);
+        String overall = abnormalCnt > 0 ? "이상 의심" : "정상";
+        return new SeriesInferResponse(studyId, slices.size(), abnormalCnt, round(maxAbn), overall, slices);
+    }
 }
