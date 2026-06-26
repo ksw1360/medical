@@ -30,5 +30,5 @@ public class Study {
     private Patient patient;
 
     @Column(name = "del_flag")
-    private boolean delFlag = false;
+    private final boolean delFlag = false;
 }
