@@ -39,4 +39,5 @@ out/
 samples/
 images/
 ./dicom-store
+.env.env.upload
 .env
