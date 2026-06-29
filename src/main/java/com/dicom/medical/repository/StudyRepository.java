@@ -1,12 +1,12 @@
 package com.dicom.medical.repository;
 
-import com.dicom.medical.dto.respond.StudyListResponse;
 import com.dicom.medical.dto.respond.StudyListView;
 import com.dicom.medical.entity.Study;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,9 +30,13 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
            OR s.studyInstanceUid LIKE CONCAT('%', :keyword, '%')
            OR p.patientId LIKE CONCAT('%', :keyword, '%'))
       AND (:modality IS NULL OR :modality = '' OR se.modality = :modality)
+      AND (:from IS NULL OR s.studyDate >= :from)
+      AND (:to   IS NULL OR s.studyDate <= :to)
     GROUP BY s.id, s.studyInstanceUid, s.studyDate, s.studyDescription, p.patientId
     ORDER BY s.studyDate DESC
 """)
     List<StudyListView> search(@Param("keyword") String keyword,
-                               @Param("modality") String modality);
+                               @Param("modality") String modality,
+                               @Param("from") LocalDateTime from,
+                               @Param("to") LocalDateTime to);
 }
