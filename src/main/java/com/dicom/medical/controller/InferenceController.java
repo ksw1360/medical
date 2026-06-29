@@ -4,6 +4,7 @@ import com.dicom.medical.entity.DicomImage;
 import com.dicom.medical.repository.DicomImageRepository;
 import com.dicom.medical.service.DicomStorageService;
 import com.dicom.medical.service.InferenceService;
+import com.dicom.medical.service.OrthancService;
 import com.dicom.medical.service.ScWriter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,14 +32,16 @@ public class InferenceController {
     private final ScWriter scWriter;
     private final DicomStorageService storageService;
     private final DicomImageRepository imageRepository;
+    private final OrthancService orthancService;
     private static final Path MODEL = Path.of("models/chest_classifier.onnx");
 
 
-    InferenceController(InferenceService s, ScWriter w, DicomStorageService storage, DicomImageRepository imageRepository) {
+    InferenceController(InferenceService s, ScWriter w, DicomStorageService storage, DicomImageRepository imageRepository, OrthancService orthancService) {
         this.service = s;
         this.scWriter = w;
         this.storageService = storage;
         this.imageRepository = imageRepository;
+        this.orthancService = orthancService;
     }
 
     @PostMapping("/infer")
@@ -62,6 +65,14 @@ public class InferenceController {
             // SC 를 S3 에 업로드 → key 는 ai-sc/<newSop>.dcm
             String scKey = "ai-sc/" + scLocal.getFileName();
             storageService.upload(scKey, scLocal, "application/dicom");
+
+            // ★ Orthanc(PACS)로 STOW 회신
+            try {
+                orthancService.stow(Files.readAllBytes(scLocal));
+            } catch (Exception e) {
+                // Orthanc 꺼져 있어도 추론 결과는 반환되도록 (회신만 실패 처리)
+                System.err.println("STOW 회신 실패: " + e.getMessage());
+            }
 
             return new Response(r, scKey);   // 프론트엔 SC 의 S3 key 반환
         } finally {
