@@ -44,7 +44,7 @@ public class DicomDownloadController {
                             "attachment; filename=\"" + filename + "\"")
                     .contentType(MediaType.parseMediaType("application/dicom"))
                     .body(data);
-        }  catch (exception e)
+        }  catch (Exception e)
         {
             return ResponseEntity.notFound().build(); // Key 없음 404
         } finally {
