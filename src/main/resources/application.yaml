@@ -39,6 +39,7 @@ spring:
 
 server:
   port: 5000
+  forward-headers-strategy: framework      # ← 이 줄 추가
 
 management:
   endpoints:
