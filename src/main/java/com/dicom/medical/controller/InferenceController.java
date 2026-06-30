@@ -10,6 +10,7 @@ import com.dicom.medical.service.XrayInferenceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dcm4che3.io.DicomInputStream;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -50,12 +51,14 @@ public class InferenceController {
         this.orthancService = orthancService;
     }
 
+    // =====================================================================
+    //  단일 이미지 추론 (S3 key 직접 지정)
+    // =====================================================================
     @PostMapping("/infer")
     @Tag(name = "AI 추론", description = "ONNX 모델 기반 흉부 영상 추론 (CT: 정상/비정상, X-ray: 병명 소견)")
     @Operation(summary = "AI 추론 실행",
             description = "전처리 → ONNX 추론 → 후처리. 모달리티가 CR/DX면 18병명 소견, 그 외엔 정상/비정상을 반환.")
     public Response infer(@RequestBody InferRequest req) throws Exception {
-        // S3 key → 임시 파일
         Path src = storageService.downloadToTemp(req.dicomPath());
         Path scDir = Files.createTempDirectory("ai-sc-");
         Path scLocal = null;
@@ -65,12 +68,9 @@ public class InferenceController {
             // ===== X-ray (CR/DX) 경로 : 18병명 다중라벨 =====
             if ("CR".equalsIgnoreCase(modality) || "DX".equalsIgnoreCase(modality)) {
                 XrayInferenceService.XrayResult xr = xrayService.inferFromDicom(src);
-
-                // 소견(영문 라인들) 번인한 SC 저장
                 scLocal = scWriter.writeSc(src, xr.burnLines(), scDir);
                 String scKey = "ai-sc/" + scLocal.getFileName();
                 storageService.upload(scKey, scLocal, "application/dicom");
-
                 try {
                     orthancService.stow(Files.readAllBytes(scLocal));
                 } catch (Exception e) {
@@ -81,20 +81,16 @@ public class InferenceController {
 
             // ===== CT 등 기존 경로 : 정상/비정상 (변경 없음) =====
             InferenceService.InferenceResult r = service.infer(src, MODEL);
-
             String findingEn = (r.abnormal() >= 0.5f ? "AI: Abnormal suspected" : "AI: Normal range")
                     + String.format(" (%.0f%%)", r.confidence() * 100);
             scLocal = scWriter.writeSc(src, findingEn, scDir);
-
             String scKey = "ai-sc/" + scLocal.getFileName();
             storageService.upload(scKey, scLocal, "application/dicom");
-
             try {
                 orthancService.stow(Files.readAllBytes(scLocal));
             } catch (Exception e) {
                 System.err.println("STOW 회신 실패: " + e.getMessage());
             }
-
             return new Response(r, null, scKey);
         } finally {
             Files.deleteIfExists(src);
@@ -119,6 +115,9 @@ public class InferenceController {
                     XrayInferenceService.XrayResult xray,
                     String scFile) {}
 
+    // =====================================================================
+    //  Series 단위 추론 (CT 전용 — 기존 그대로)
+    // =====================================================================
     @PostMapping("/infer/series/{seriesId}")
     @Tag(name = "AI 추론", description = "검사(Series) 전체 슬라이스 일괄 추론")
     @Operation(summary = "Series 단위 AI 추론",
@@ -144,12 +143,10 @@ public class InferenceController {
                 try { Files.deleteIfExists(tmp); } catch (IOException ignored) {}
             }
         }
-
         long abnormalCnt = slices.stream().filter(s -> s.abnormal() >= 0.5f).count();
         float maxAbn = slices.stream().map(SliceResult::abnormal)
                 .filter(v -> v >= 0).max(Float::compare).orElse(0f);
         String overall = abnormalCnt > 0 ? "이상 의심" : "정상";
-
         return new SeriesInferResponse(seriesId, slices.size(), abnormalCnt, round(maxAbn), overall, slices);
     }
 
@@ -159,14 +156,44 @@ public class InferenceController {
     record SeriesInferResponse(Long seriesId, int total, long abnormalCount,
                                float maxAbnormal, String overall, List<SliceResult> slices) {}
 
+    // =====================================================================
+    //  Study 단위 추론 — 모달리티 분기 (CR/DX = 병명 소견, 그 외 = CT 정상/비정상)
+    // =====================================================================
     @PostMapping("/infer/study/{studyId}")
-    @Tag(name = "AI 추론", description = "검사(Study) 전체 슬라이스 일괄 추론")
+    @Tag(name = "AI 추론", description = "검사(Study) 전체 일괄 추론")
     @Operation(summary = "Study 단위 AI 추론",
-            description = "한 Study의 모든 슬라이스를 추론하고 결과를 집계해 반환.")
-    public SeriesInferResponse inferStudy(@PathVariable Long studyId) {
+            description = "CR/DX면 영상별 18병명 소견, 그 외(CT 등)면 슬라이스 정상/비정상 집계를 반환.")
+    public ResponseEntity<?> inferStudy(@PathVariable Long studyId) {
         List<DicomImage> images = imageRepository.findBySeries_Study_IdOrderByInstanceNumber(studyId);
         if (images.isEmpty()) throw new IllegalArgumentException("해당 Study에 영상이 없음: " + studyId);
 
+        // 첫 영상으로 모달리티 판별 (검사 내 모달리티는 동일하다고 가정)
+        String modality = modalityOf(images.get(0));
+
+        // ===== X-ray (CR/DX) : 영상별 병명 소견 =====
+        if ("CR".equalsIgnoreCase(modality) || "DX".equalsIgnoreCase(modality)) {
+            List<XrayImageResult> results = new ArrayList<>();
+            for (DicomImage img : images) {
+                Path tmp = storageService.downloadToTemp(img.getS3Key());
+                try {
+                    XrayInferenceService.XrayResult xr = xrayService.inferFromDicom(tmp);
+                    results.add(new XrayImageResult(
+                            img.getSopInstanceUid(), xr.abnormal(), xr.summary(),
+                            xr.reportKo(), xr.positives()));
+                } catch (Exception e) {
+                    results.add(new XrayImageResult(
+                            img.getSopInstanceUid(), false,
+                            "추론실패: " + e.getMessage(), "", List.of()));
+                } finally {
+                    try { Files.deleteIfExists(tmp); } catch (IOException ignored) {}
+                }
+            }
+            long abn = results.stream().filter(XrayImageResult::abnormal).count();
+            String overall = abn > 0 ? "이상 의심" : "정상";
+            return ResponseEntity.ok(new XrayStudyResponse(studyId, results.size(), overall, results));
+        }
+
+        // ===== CT 등 : 기존 슬라이스 집계 (변경 없음) =====
         List<SliceResult> slices = new ArrayList<>();
         for (DicomImage img : images) {
             Path tmp = storageService.downloadToTemp(img.getS3Key());
@@ -187,6 +214,23 @@ public class InferenceController {
         float maxAbn = slices.stream().map(SliceResult::abnormal)
                 .filter(v -> v >= 0).max(Float::compare).orElse(0f);
         String overall = abnormalCnt > 0 ? "이상 의심" : "정상";
-        return new SeriesInferResponse(studyId, slices.size(), abnormalCnt, round(maxAbn), overall, slices);
+        return ResponseEntity.ok(
+                new SeriesInferResponse(studyId, slices.size(), abnormalCnt, round(maxAbn), overall, slices));
     }
+
+    /** 영상 1장을 임시 다운로드해 모달리티만 읽고 정리 */
+    private String modalityOf(DicomImage img) {
+        Path tmp = storageService.downloadToTemp(img.getS3Key());
+        try {
+            return readModality(tmp);
+        } finally {
+            try { Files.deleteIfExists(tmp); } catch (IOException ignored) {}
+        }
+    }
+
+    /** X-ray 영상 1장 결과 (정상/비정상 + 병명 + 한글 소견) */
+    record XrayImageResult(String sopUid, boolean abnormal, String summary,
+                           String reportKo, List<XrayInferenceService.Finding> positives) {}
+    /** X-ray Study 추론 응답 */
+    record XrayStudyResponse(Long studyId, int total, String overall, List<XrayImageResult> results) {}
 }
