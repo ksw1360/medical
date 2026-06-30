@@ -232,7 +232,7 @@ public class InferenceController {
             } catch (Exception e) {
                 System.err.println("리포트 저장 실패: " + e.getMessage());
             }
-            
+
             return ResponseEntity.ok(new XrayStudyResponse(studyId, results.size(), overall, results));
         }
 
