@@ -40,3 +40,4 @@ samples/
 images/
 ./dicom-store
 .env
+python/
