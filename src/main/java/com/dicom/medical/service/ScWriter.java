@@ -30,12 +30,23 @@ import java.util.Iterator;
 public class ScWriter {
 
     /**
-     * @param srcDcm   원본 .dcm 경로
-     * @param finding  소견 한 줄 (영문 권장: DICOM 기본 문자셋 한글 미지원)
-     * @param outDir   SC 저장 폴더
-     * @return 저장된 SC 파일 경로
+     * 소견 1줄 버전 (기존 호출 호환). 내부적으로 여러 줄 버전에 위임한다.
      */
     public Path writeSc(Path srcDcm, String finding, Path outDir) throws Exception {
+        return writeSc(srcDcm, new String[]{finding}, outDir);
+    }
+
+    /**
+     * 소견 여러 줄 버전 — X-ray 다중 병명 소견(정상/비정상 + 병명들)을 여러 줄로 번인.
+     *
+     * @param srcDcm 원본 .dcm 경로
+     * @param lines  영상에 새길 줄들 (영문 권장: DICOM 기본 문자셋 한글 미지원)
+     * @param outDir SC 저장 폴더
+     * @return 저장된 SC 파일 경로
+     */
+    public Path writeSc(Path srcDcm, String[] lines, Path outDir) throws Exception {
+        if (lines == null || lines.length == 0) lines = new String[]{"AI"};
+
         // --- 1) 원본 메타데이터 + 픽셀 ---
         Attributes src;
         try (DicomInputStream dis = new DicomInputStream(srcDcm.toFile())) {
@@ -68,14 +79,20 @@ public class ScWriter {
             }
         }
 
-        // --- 3) 소견 텍스트 번인 ---
+        // --- 3) 소견 텍스트 번인 (여러 줄) ---
         Graphics2D g2 = img.createGraphics();
-        int barH = Math.max(28, rows / 30);
+        int fontSize = Math.max(16, rows / 50);
+        int lineH = fontSize + 6;
+        int barH = Math.max(28, lineH * lines.length + 8);
         g2.setColor(Color.BLACK);
-        g2.fillRect(0, 0, cols, barH);
+        g2.fillRect(0, 0, cols, barH);                       // 상단 검은 띠
         g2.setColor(new Color(255, 80, 80));
-        g2.setFont(new Font("SansSerif", Font.BOLD, Math.max(16, rows / 50)));
-        g2.drawString(finding, 10, (int) (barH * 0.72));
+        g2.setFont(new Font("SansSerif", Font.BOLD, fontSize));
+        int yy = fontSize + 4;
+        for (String ln : lines) {
+            g2.drawString(ln == null ? "" : ln, 10, yy);
+            yy += lineH;
+        }
         g2.dispose();
 
         // --- 4) BufferedImage → DICOM SC 속성 ---
@@ -83,6 +100,7 @@ public class ScWriter {
         // BGR → RGB 로 스왑 (DICOM PhotometricInterpretation=RGB 기준)
         for (int i = 0; i < rgb.length; i += 3) { byte b = rgb[i]; rgb[i] = rgb[i + 2]; rgb[i + 2] = b; }
 
+        String comment = String.join(" | ", lines);
         String newSop = UIDUtils.createUID();
         Attributes sc = new Attributes();
         // ★ 같은 검사 유지 / ★ 새 SOP UID / 새 Series
@@ -95,7 +113,7 @@ public class ScWriter {
         sc.setString(Tag.PatientName, VR.PN, src.getString(Tag.PatientName, "ANONYMOUS^01"));
         sc.setString(Tag.Modality, VR.CS, "OT");           // Other
         sc.setString(Tag.ConversionType, VR.CS, "WSD");    // Workstation
-        sc.setString(Tag.ImageComments, VR.LT, finding);
+        sc.setString(Tag.ImageComments, VR.LT, comment);
         // 픽셀 메타 (RGB 8bit)
         sc.setInt(Tag.Rows, VR.US, rows);
         sc.setInt(Tag.Columns, VR.US, cols);
