@@ -21,7 +21,7 @@ import java.util.*;
 public class XrayInferenceService {
 
     /** 양성 판정 임계값 (데모용 기본 0.5). 너무 많이/적게 나오면 조정. */
-    private static final float THRESHOLD = 0.5f;
+    private static final float THRESHOLD = 0.3f;;
 
     private OrtEnvironment env;
     private OrtSession session;
