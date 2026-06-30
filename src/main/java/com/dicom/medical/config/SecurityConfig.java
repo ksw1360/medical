@@ -52,6 +52,7 @@ public class SecurityConfig {
                                         "/v3/api-docs/**",
                                         "/api/dicom/**"          // ← 이 줄 추가
                                 ).permitAll()
+                                .requestMatchers("/api/reports/**").permitAll()
                                 // 그 외 전부 인증 필요 (로그인 후 접근)
                                 .anyRequest().authenticated()
                 )

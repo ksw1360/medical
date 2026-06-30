@@ -1,7 +1,10 @@
 package com.dicom.medical.controller;
 
 import com.dicom.medical.entity.DicomImage;
+import com.dicom.medical.entity.Report;
 import com.dicom.medical.repository.DicomImageRepository;
+import com.dicom.medical.repository.ReportRepository;
+import com.dicom.medical.repository.StudyRepository;
 import com.dicom.medical.service.DicomStorageService;
 import com.dicom.medical.service.InferenceService;
 import com.dicom.medical.service.OrthancService;
@@ -12,10 +15,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.dcm4che3.io.DicomInputStream;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,16 +44,22 @@ public class InferenceController {
     private final OrthancService orthancService;
     private static final Path MODEL = Path.of("models/chest_classifier.onnx");
 
+    private final ReportRepository reportRepository;
+    private final StudyRepository studyRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
 
     InferenceController(InferenceService s, XrayInferenceService xrayService, ScWriter w,
                         DicomStorageService storage, DicomImageRepository imageRepository,
-                        OrthancService orthancService) {
+                        OrthancService orthancService, ReportRepository reportRepository, StudyRepository studyRepository) {
         this.service = s;
         this.xrayService = xrayService;
         this.scWriter = w;
         this.storageService = storage;
         this.imageRepository = imageRepository;
         this.orthancService = orthancService;
+        this.reportRepository = reportRepository;
+        this.studyRepository = studyRepository;
     }
 
     // =====================================================================
@@ -206,6 +217,22 @@ public class InferenceController {
             }
             long abn = results.stream().filter(XrayImageResult::abnormal).count();
             String overall = abn > 0 ? "이상 의심" : "정상";
+
+            // AI 결과를 판독 리포트에 저장 (검사당 1건 upsert)
+            try {
+                Report report = reportRepository.findByStudy_Id(studyId)
+                        .orElseGet(() -> Report.builder()
+                                .study(studyRepository.findById(studyId).orElseThrow())
+                                .build());
+                report.setAiAbnormal(abn > 0);
+                report.setAiOverall(overall);
+                report.setAiResultJson(objectMapper.writeValueAsString(results));
+                report.setAiInferredAt(LocalDateTime.now());
+                reportRepository.save(report);
+            } catch (Exception e) {
+                System.err.println("리포트 저장 실패: " + e.getMessage());
+            }
+            
             return ResponseEntity.ok(new XrayStudyResponse(studyId, results.size(), overall, results));
         }
 
