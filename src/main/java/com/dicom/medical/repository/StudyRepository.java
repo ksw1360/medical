@@ -39,4 +39,14 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
                                @Param("modality") String modality,
                                @Param("from") LocalDateTime from,
                                @Param("to") LocalDateTime to);
+
+    // 모달리티 통계
+    @Query("SELECT se.modality, COUNT(DISTINCT se.study.id) " +
+            "FROM Series se WHERE se.study.delFlag = false " +
+            "GROUP BY se.modality")
+    List<Object[]> countStudiesByModality();
+
+    // DelFrag
+    @Query("SELECT s.delFlag, COUNT(s) FROM Study s GROUP BY s.delFlag")
+    List<Object[]> countByDelFlag();
 }
