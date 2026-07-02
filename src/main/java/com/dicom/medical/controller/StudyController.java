@@ -59,7 +59,10 @@ public class StudyController {
                         img.getSopInstanceUid(),
                         img.getInstanceNumber(),
                         img.getRows(),
-                        img.getColumns()))
+                        img.getColumns(),
+                        img.getWindowCenter(),
+                        img.getWindowWidth()
+                        ))
                 .toList();
         return ResponseEntity.ok(list);
     }

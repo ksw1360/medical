@@ -5,5 +5,7 @@ public record ImageListView(
         String sopUid,
         Integer instanceNumber,
         Integer rows,
-        Integer columns
+        Integer columns,
+        Double windowCenter,
+        Double windowWidth
 ) {}
