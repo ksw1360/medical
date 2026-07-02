@@ -1,8 +1,12 @@
 package com.dicom.medical.controller;
 
 import com.dicom.medical.dto.respond.ImageListView;
+import com.dicom.medical.dto.respond.SeriesListView;
 import com.dicom.medical.dto.respond.StudyListView;
+import com.dicom.medical.entity.DicomImage;
+import com.dicom.medical.entity.Series;
 import com.dicom.medical.repository.DicomImageRepository;
+import com.dicom.medical.repository.SeriesRepository;
 import com.dicom.medical.service.StudyQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,6 +29,7 @@ public class StudyController {
 
     private final StudyQueryService studyQueryService;
     private final DicomImageRepository imageRepository;
+    private final SeriesRepository seriesRepository;
 
     @Operation(
             summary = "검사 목록 조회 / 검색",
@@ -61,8 +66,33 @@ public class StudyController {
                         img.getRows(),
                         img.getColumns(),
                         img.getWindowCenter(),
-                        img.getWindowWidth()
-                        ))
+                        img.getWindowWidth()))
+                .toList();
+        return ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/{studyId}/series")
+    @Operation(summary = "검사별 시리즈 목록 (카드 UI용)",
+            description = "한 검사(Study)에 포함된 Series들을 seriesNumber 순으로 반환. "
+                    + "각 Series의 modality·촬영부위·영상 수와 대표 슬라이스(첫 장)를 포함해 카드 그리드에 바로 쓸 수 있다.")
+    public ResponseEntity<List<SeriesListView>> series(@PathVariable Long studyId) {
+        List<SeriesListView> list = seriesRepository
+                .findByStudy_IdOrderBySeriesNumber(studyId)
+                .stream()
+                .map(s -> {
+                    List<DicomImage> imgs = imageRepository.findBySeries_IdOrderByInstanceNumber(s.getId());
+                    DicomImage rep = imgs.isEmpty() ? null : imgs.get(0);
+                    return new SeriesListView(
+                            s.getId(),
+                            s.getSeriesInstanceUid(),
+                            s.getModality(),
+                            s.getSeriesNumber(),
+                            s.getBodyPart(),
+                            imgs.size(),
+                            rep == null ? null : rep.getId(),
+                            rep == null ? null : rep.getSopInstanceUid(),
+                            rep == null ? null : rep.getInstanceNumber());
+                })
                 .toList();
         return ResponseEntity.ok(list);
     }
