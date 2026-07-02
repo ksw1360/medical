@@ -90,7 +90,7 @@ aws:
   bedrock:
     enabled: true
     region: ${AWS_BEDROCK_REGION:ap-northeast-2}
-    model-id: ${AWS_BEDROCK_MODEL_ID:anthropic.claude-haiku-4-5-20251001-v1:0}
+    model-id: ${AWS_BEDROCK_MODEL_ID:apac.anthropic.claude-haiku-4-5-20251001-v1:0
 # DICOM 로컬 저장 경로 (배포 시 S3로 교체 예정)
 dicom:
   storage:
