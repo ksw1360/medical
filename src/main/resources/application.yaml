@@ -83,7 +83,7 @@ nts:
 aws:
   s3:
     enabled: true
-#    bucket: ${AWS_S3_BUCKET}
+    #    bucket: ${AWS_S3_BUCKET}
     region: ${AWS_S3_REGION}
   access-key: ${AWS_ACCESS_KEY}
   secret-key: ${AWS_SECRET_KEY}
