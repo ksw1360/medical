@@ -31,22 +31,16 @@ public class StudyController {
     private final DicomImageRepository imageRepository;
     private final SeriesRepository seriesRepository;
 
-    @Operation(
-            summary = "검사 목록 조회 / 검색",
-            description = "검사 목록을 최신순으로 반환. keyword(검사설명·UID·환자ID 부분일치), modality(정확일치), "
-                    + "from·to(검사일 범위, yyyy-MM-dd)로 필터 가능. 모두 생략 시 전체 조회."
-    )
+    @Operation(summary = "검사 목록 조회 / 검색",
+            description = "검사 목록을 최신순으로 반환. keyword/modality/from/to 필터 가능. 모두 생략 시 전체 조회.")
     @GetMapping
     public List<StudyListView> list(
-            @Parameter(description = "검색어 — 검사설명, StudyInstanceUID, 환자ID 부분일치", example = "Mammo")
+            @Parameter(description = "검색어 - 검사설명, StudyInstanceUID, 환자ID 부분일치", example = "Mammo")
             @RequestParam(required = false) String keyword,
-
             @Parameter(description = "모달리티 정확일치 필터", example = "CT")
             @RequestParam(required = false) String modality,
-
             @Parameter(description = "검사일 시작 (yyyy-MM-dd, 포함)", example = "2017-02-01")
             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
-
             @Parameter(description = "검사일 끝 (yyyy-MM-dd, 포함)", example = "2017-02-28")
             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
         return studyQueryService.getStudies(keyword, modality, from, to);
@@ -54,7 +48,7 @@ public class StudyController {
 
     @GetMapping("/{studyId}/images")
     @Operation(summary = "검사별 영상 목록",
-            description = "한 검사에 포함된 영상들을 instanceNumber 순으로 반환. 프론트 드릴다운(검사→영상→미리보기)용.")
+            description = "한 검사에 포함된 영상들을 instanceNumber 순으로 반환.")
     public ResponseEntity<List<ImageListView>> images(@PathVariable Long studyId) {
         List<ImageListView> list = imageRepository
                 .findBySeries_Study_IdOrderByInstanceNumber(studyId)
@@ -73,8 +67,8 @@ public class StudyController {
 
     @GetMapping("/{studyId}/series")
     @Operation(summary = "검사별 시리즈 목록 (카드 UI용)",
-            description = "한 검사(Study)에 포함된 Series들을 seriesNumber 순으로 반환. "
-                    + "각 Series의 modality·촬영부위·영상 수와 대표 슬라이스(첫 장)를 포함해 카드 그리드에 바로 쓸 수 있다.")
+            description = "한 검사(Study)의 Series들을 seriesNumber 순으로 반환. "
+                    + "각 Series의 modality/촬영부위/영상수와 대표 슬라이스(첫 장)를 포함해 카드 그리드에 바로 사용.")
     public ResponseEntity<List<SeriesListView>> series(@PathVariable Long studyId) {
         List<SeriesListView> list = seriesRepository
                 .findByStudy_IdOrderBySeriesNumber(studyId)
