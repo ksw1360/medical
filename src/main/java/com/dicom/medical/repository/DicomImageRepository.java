@@ -1,4 +1,3 @@
-// repository/DicomImageRepository.java
 package com.dicom.medical.repository;
 
 import com.dicom.medical.entity.DicomImage;
@@ -13,6 +12,8 @@ public interface DicomImageRepository extends JpaRepository<DicomImage, Long> {
     // 여러장의 DICOM File 처리
     List<DicomImage> findBySeries_IdOrderByInstanceNumber(Long seriesId);
 
-    // DicomImageRepository.java
     List<DicomImage> findBySeries_Study_IdOrderByInstanceNumber(Long studyId);
+
+    // 추가: 원본 S3 key로 역추적 (AI 결과 저장 시 study 찾기용)
+    Optional<DicomImage> findByS3Key(String s3Key);
 }

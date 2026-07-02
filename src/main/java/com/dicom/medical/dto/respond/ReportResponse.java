@@ -4,14 +4,15 @@ import com.dicom.medical.entity.Report;
 
 import java.time.LocalDateTime;
 
-/** 판독 리포트 응답 DTO. (프론트 판독창용) */
+/** 판독 리포트 응답 DTO. */
 public record ReportResponse(
         Long id,
         Long studyId,
         Boolean aiAbnormal,
         String aiOverall,
         String aiResultJson,
-        String aiReportText,    // ★ LLM 생성 소견서
+        String scKey,           // SC 이미지 S3 key
+        String aiReportText,    // LLM 생성 소견서
         String doctorName,
         String doctorOpinion,
         Boolean confirmed,
@@ -26,6 +27,7 @@ public record ReportResponse(
                 r.getAiAbnormal(),
                 r.getAiOverall(),
                 r.getAiResultJson(),
+                r.getScKey(),
                 r.getAiReportText(),
                 r.getDoctorName(),
                 r.getDoctorOpinion(),

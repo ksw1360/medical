@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 /**
  * 판독 리포트 — Study 와 1:1 (study_id UNIQUE).
- * AI 추론 결과(ai_*) + 의사 소견(doctor_*) + LLM 생성 소견서(ai_report_text) 저장.
+ * AI 추론 결과(ai_*) + LLM 소견서(ai_report_text) + SC key(sc_key) + 의사 소견(doctor_*).
  */
 @Entity
 @Getter
@@ -22,24 +22,28 @@ public class Report {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ── AI 추론 결과 ─────────────────────────────
+    // AI 추론 결과
     @Column(name = "ai_abnormal")
     private Boolean aiAbnormal;
 
     @Column(name = "ai_overall")
-    private String aiOverall;                 // 예: "정상 (이상 소견 없음)"
+    private String aiOverall;
 
     @Column(name = "ai_result_json", columnDefinition = "TEXT")
-    private String aiResultJson;              // /api/ai/infer 의 xray 결과 JSON 원문
+    private String aiResultJson;
 
     @Column(name = "ai_inferred_at")
     private LocalDateTime aiInferredAt;
 
-    // ── LLM 생성 판독 소견서 (신규 컬럼) ──────────
+    // SC(Secondary Capture) 이미지 S3 key — 결과창 재열람용
+    @Column(name = "sc_key")
+    private String scKey;
+
+    // LLM 생성 판독 소견서
     @Column(name = "ai_report_text", columnDefinition = "TEXT")
     private String aiReportText;
 
-    // ── 의사 소견 / 확정 ─────────────────────────
+    // 의사 소견 / 확정
     @Column(name = "doctor_name")
     private String doctorName;
 
@@ -52,14 +56,14 @@ public class Report {
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
 
-    // ── 감사 컬럼 ────────────────────────────────
+    // 감사 컬럼
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // ── 연관 ─────────────────────────────────────
+    // 연관
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "study_id", unique = true)
     private Study study;

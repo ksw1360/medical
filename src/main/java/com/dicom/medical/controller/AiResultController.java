@@ -1,44 +1,61 @@
 package com.dicom.medical.controller;
 
 import com.dicom.medical.dto.respond.AiResultResponse;
+import com.dicom.medical.entity.DicomImage;
+import com.dicom.medical.entity.Report;
+import com.dicom.medical.entity.Study;
+import com.dicom.medical.repository.DicomImageRepository;
+import com.dicom.medical.repository.ReportRepository;
 import com.dicom.medical.service.DicomStorageService;
 import com.dicom.medical.service.InferenceService;
 import com.dicom.medical.service.ScWriter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 
 /**
  * SC(이미지)+SR(추론 텍스트) 결과창 통합 API.
- * 원본 DICOM(S3 key)을 받아 추론 → SC 생성/업로드 후,
+ * 원본 DICOM(S3 key)을 추론 → SC 생성/업로드 → 결과를 Report에 저장(upsert) 후
  * SR 텍스트 + SC/원본 이미지 URL 을 한 응답으로 반환한다.
  */
 @RestController
 @RequestMapping("/api/ai")
-@Tag(name = "AI 결과창", description = "SC(이미지)+SR(추론내용) 통합 결과 응답")
+@Tag(name = "AI 결과창", description = "SC(이미지)+SR(추론내용) 통합 결과 + 저장")
 public class AiResultController {
 
     private final InferenceService service;
     private final ScWriter scWriter;
     private final DicomStorageService storageService;
+    private final DicomImageRepository imageRepository;
+    private final ReportRepository reportRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private static final Path MODEL = Path.of("models/chest_classifier.onnx");
 
     public AiResultController(InferenceService service, ScWriter scWriter,
-                             DicomStorageService storageService) {
+                             DicomStorageService storageService,
+                             DicomImageRepository imageRepository,
+                             ReportRepository reportRepository) {
         this.service = service;
         this.scWriter = scWriter;
         this.storageService = storageService;
+        this.imageRepository = imageRepository;
+        this.reportRepository = reportRepository;
     }
 
     @PostMapping("/result")
-    @Operation(summary = "SC+SR 통합 결과",
+    @Transactional
+    @Operation(summary = "SC+SR 통합 결과 (저장 포함)",
             description = "원본 DICOM(S3 key)을 추론하고 SC를 생성한 뒤, 추론 텍스트(SR)와 "
-                    + "SC/원본 이미지 URL을 한 번에 반환. 프론트 결과창이 단일 호출로 렌더 가능.")
+                    + "SC/원본 이미지 URL을 반환. 결과는 해당 study의 Report에 저장되어 나중에 "
+                    + "GET /api/reports/{studyId} 로 재추론 없이 다시 볼 수 있다.")
     public AiResultResponse result(@RequestBody ResultRequest req) throws Exception {
         String origKey = req.dicomPath();
         Path src = storageService.downloadToTemp(origKey);
@@ -48,6 +65,7 @@ public class AiResultController {
             InferenceService.InferenceResult r = service.infer(src, MODEL);
 
             boolean abnormal = r.abnormal() >= 0.5f;
+            String overall = abnormal ? "이상 의심" : "정상";
             String findingEn = (abnormal ? "AI: Abnormal suspected" : "AI: Normal range")
                     + String.format(" (%.0f%%)", r.confidence() * 100);
             scLocal = scWriter.writeSc(src, findingEn, scDir);
@@ -57,12 +75,29 @@ public class AiResultController {
 
             AiResultResponse.Sr sr = new AiResultResponse.Sr(
                     r.label(), round(r.abnormal()), round(r.normal()),
-                    round(r.confidence()), r.confidencePercent(),
-                    abnormal ? "이상 의심" : "정상");
+                    round(r.confidence()), r.confidencePercent(), overall);
             AiResultResponse.Sc sc = new AiResultResponse.Sc(scKey, previewUrl(scKey));
             AiResultResponse.Original orig = new AiResultResponse.Original(origKey, previewUrl(origKey));
 
-            return new AiResultResponse(sr, sc, orig);
+            // Report 저장(upsert) — 원본 key로 study 역추적
+            Long studyId = null;
+            boolean saved = false;
+            DicomImage img = imageRepository.findByS3Key(origKey).orElse(null);
+            if (img != null && img.getSeries() != null && img.getSeries().getStudy() != null) {
+                Study study = img.getSeries().getStudy();
+                studyId = study.getId();
+                Report report = reportRepository.findByStudy_Id(studyId)
+                        .orElseGet(() -> Report.builder().study(study).build());
+                report.setAiAbnormal(abnormal);
+                report.setAiOverall(overall);
+                report.setAiResultJson(objectMapper.writeValueAsString(sr));
+                report.setAiInferredAt(LocalDateTime.now());
+                report.setScKey(scKey);
+                reportRepository.save(report);
+                saved = true;
+            }
+
+            return new AiResultResponse(studyId, saved, sr, sc, orig);
         } finally {
             Files.deleteIfExists(src);
             if (scLocal != null) Files.deleteIfExists(scLocal);
