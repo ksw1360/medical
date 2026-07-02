@@ -1,14 +1,17 @@
 package com.dicom.medical.exception;
 
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import java.util.NoSuchElementException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -57,6 +60,17 @@ public class GlobalExceptionHandler {
                 "status", 400,
                 "message", "입력값을 확인해주세요.",
                 "errors", fieldErrors,    // 어느 필드가 틀렸는지
+                "timestamp", LocalDateTime.now().toString()
+        ));
+    }
+
+    // 리소스 없음 — 404 Not Found
+    // (repository.findX().orElseThrow(() -> new NoSuchElementException(...)) 등)
+    @ExceptionHandler({NoSuchElementException.class, EntityNotFoundException.class})
+    public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "status",    404,
+                "message",   e.getMessage() != null ? e.getMessage() : "요청한 리소스를 찾을 수 없습니다.",
                 "timestamp", LocalDateTime.now().toString()
         ));
     }
