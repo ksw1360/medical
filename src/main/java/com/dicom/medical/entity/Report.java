@@ -2,18 +2,16 @@ package com.dicom.medical.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
 /**
- * 판독 리포트 — 한 검사(Study)당 1건.
- *   AI 추론 결과 + 의사 소견을 한 묶음으로 보관.
- *   (배치 위치: src/main/java/com/dicom/medical/entity/Report.java)
+ * 판독 리포트 — Study 와 1:1 (study_id UNIQUE).
+ * AI 추론 결과(ai_*) + 의사 소견(doctor_*) + LLM 생성 소견서(ai_report_text) 저장.
  */
 @Entity
-@Getter @Setter
+@Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
@@ -24,35 +22,58 @@ public class Report {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 한 검사 = 한 리포트 (unique) */
+    // ── AI 추론 결과 ─────────────────────────────
+    @Column(name = "ai_abnormal")
+    private Boolean aiAbnormal;
+
+    @Column(name = "ai_overall")
+    private String aiOverall;                 // 예: "정상 (이상 소견 없음)"
+
+    @Column(name = "ai_result_json", columnDefinition = "TEXT")
+    private String aiResultJson;              // /api/ai/infer 의 xray 결과 JSON 원문
+
+    @Column(name = "ai_inferred_at")
+    private LocalDateTime aiInferredAt;
+
+    // ── LLM 생성 판독 소견서 (신규 컬럼) ──────────
+    @Column(name = "ai_report_text", columnDefinition = "TEXT")
+    private String aiReportText;
+
+    // ── 의사 소견 / 확정 ─────────────────────────
+    @Column(name = "doctor_name")
+    private String doctorName;
+
+    @Column(name = "doctor_opinion", columnDefinition = "TEXT")
+    private String doctorOpinion;
+
+    @Column(name = "confirmed")
+    private Boolean confirmed;
+
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
+    // ── 감사 컬럼 ────────────────────────────────
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    // ── 연관 ─────────────────────────────────────
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "study_id", unique = true)
     private Study study;
 
-    // ===== AI 추론 결과 =====
-    private Boolean aiAbnormal;             // 검사 전체 이상 여부
-    private String  aiOverall;              // "이상 의심" / "정상"
+    @PrePersist
+    void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+        if (this.confirmed == null) this.confirmed = false;
+    }
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String  aiResultJson;           // 영상별 병명·확률·scKey 등 상세(JSON 문자열)
-
-    private LocalDateTime aiInferredAt;     // AI 추론 시각
-
-    // ===== 의사 소견 =====
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String  doctorOpinion;          // 의사 소견(자유 서술)
-
-    private String  doctorName;             // 판독의
-
-    @Builder.Default
-    private Boolean confirmed = false;      // 의사 확정 여부
-
-    private LocalDateTime confirmedAt;      // 확정 시각
-
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    @PreUpdate
+    void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }
