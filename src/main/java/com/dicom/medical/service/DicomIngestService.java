@@ -33,7 +33,10 @@ public class DicomIngestService {
             Attributes attrs = dis.readDataset();          // 읽기
             String tsuid = dis.getTransferSyntax();         // 저장 시 재기록용
             validate(attrs);                                // 검증
-            deidentifyService.deidentify(attrs);            // de-id (지금 no-op)
+            // 비식별화 적용: attrs를 in-place 수정
+            // (PatientName/BirthDate 제거, PatientID 해시 치환, UID 재생성)
+            // TODO: Series/Study Date 처리 여부는 DeidentifyService 정책 확인
+            deidentifyService.deidentify(attrs);
 
             // 멱등성: 이미 저장된 SOPInstanceUID면 스킵
             String sop = attrs.getString(Tag.SOPInstanceUID);
