@@ -1,15 +1,11 @@
 package com.dicom.medical.dto.request;
 
 /**
- * LLM 소견서 생성 요청 바디 (전부 optional).
- * - aiResultJson/aiOverall/aiAbnormal: /api/ai/infer 결과를 그대로 넘기면 report 에 저장 후 프롬프트에 사용.
- *   (생략 시 이미 저장돼 있는 report 의 AI 필드를 사용)
- * - doctorOpinion/doctorName: 의사 소견 메모를 함께 반영.
+ * LLM 판독 소견서 생성 요청.
+ * 프론트 '판독 소견서 작성' 버튼 → { studyId, userMemo } 만 전달.
+ * AI 결과(SR)·SC는 이미 /api/ai/result 로 저장돼 있으므로 백엔드가 읽어 사용한다.
  */
 public record GenerateReportRequest(
-        String aiResultJson,
-        String aiOverall,
-        Boolean aiAbnormal,
-        String doctorName,
-        String doctorOpinion
+        Long studyId,
+        String userMemo   // 의사가 직접 쓴 소견 메모
 ) {}

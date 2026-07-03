@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "판독 리포트", description = "AI 결과 + 의사 소견 기반 LLM 판독 소견서 생성/조회/확정")
+@Tag(name = "판독 리포트", description = "AI 결과(SC/SR) + 의사 소견 기반 LLM 판독 소견서 생성/조회/확정")
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
@@ -18,13 +18,13 @@ public class ReportController {
 
     private final ReportService reportService;
 
-    @PostMapping("/{studyId}/generate")
+    @PostMapping("/generate")
     @Operation(summary = "LLM 판독 소견서 생성",
-            description = "AI 추론 결과와 의사 소견 메모를 LLM(Bedrock Claude)에 전달해 한국어 판독 소견서 초안을 생성·저장한다. "
-                    + "body 는 전부 optional — aiResultJson 등을 넘기면 report 에 저장 후 사용, 생략 시 기존 저장값 사용.")
-    public ResponseEntity<ReportResponse> generate(@PathVariable Long studyId,
-                                                   @RequestBody(required = false) GenerateReportRequest req) {
-        return ResponseEntity.ok(reportService.generate(studyId, req));
+            description = "'판독 소견서 작성' 버튼용. body { studyId, userMemo } 만 받아, 이미 저장된 "
+                    + "AI 결과(SR)·SC와 소견 메모를 종합해 LLM이 한국어 소견서를 생성·저장한다. "
+                    + "선행 조건: 해당 study에 /api/ai/result 추론이 먼저 실행되어 있어야 함.")
+    public ResponseEntity<ReportResponse> generate(@RequestBody GenerateReportRequest req) {
+        return ResponseEntity.ok(reportService.generate(req));
     }
 
     @GetMapping("/{studyId}")

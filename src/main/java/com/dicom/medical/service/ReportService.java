@@ -24,7 +24,7 @@ public class ReportService {
 
     private static final String SYSTEM_PROMPT = """
         당신은 영상의학과 판독의를 돕는 임상 판독 보조 AI입니다.
-        제공된 AI 추론 결과(라벨별 확률)와 의사 소견 메모, 검사 정보를 바탕으로
+        제공된 AI 추론 결과(SR)와 의사 소견 메모, 검사 정보를 바탕으로
         한국어 판독 소견서 초안을 작성하세요.
 
         규칙:
@@ -36,25 +36,29 @@ public class ReportService {
         - 불필요한 서론 없이 소견서 본문만 출력한다.
         """;
 
-    /** LLM 판독 소견서 생성 (핵심 기능). */
+    /**
+     * LLM 판독 소견서 생성.
+     * 요청은 { studyId, userMemo } 만 받고, 이미 저장된 Report의 SR(aiResultJson)·SC(scKey)를 읽어 LLM에 전달.
+     * AI 추론(/api/ai/result)이 선행되지 않았으면 오류.
+     */
     @Transactional
-    public ReportResponse generate(Long studyId, GenerateReportRequest req) {
+    public ReportResponse generate(GenerateReportRequest req) {
+        Long studyId = req.studyId();
         Study study = studyRepository.findById(studyId)
                 .orElseThrow(() -> new NoSuchElementException("Study 없음: " + studyId));
 
         Report report = reportRepository.findByStudy_Id(studyId)
-                .orElseGet(() -> Report.builder().study(study).build());
+                .orElseThrow(() -> new IllegalStateException(
+                        "AI 추론 결과가 없습니다. 먼저 /api/ai/result 로 추론을 실행하세요. studyId=" + studyId));
 
-        // 요청으로 넘어온 AI 결과/소견을 report 에 반영 (있는 것만)
-        if (req != null) {
-            if (req.aiResultJson() != null) {
-                report.setAiResultJson(req.aiResultJson());
-                report.setAiInferredAt(LocalDateTime.now());
-            }
-            if (req.aiOverall() != null)     report.setAiOverall(req.aiOverall());
-            if (req.aiAbnormal() != null)    report.setAiAbnormal(req.aiAbnormal());
-            if (req.doctorName() != null)    report.setDoctorName(req.doctorName());
-            if (req.doctorOpinion() != null) report.setDoctorOpinion(req.doctorOpinion());
+        if (report.getAiResultJson() == null || report.getAiResultJson().isBlank()) {
+            throw new IllegalStateException(
+                    "저장된 AI 분석(SR)이 없습니다. 먼저 /api/ai/result 로 추론을 실행하세요. studyId=" + studyId);
+        }
+
+        // 의사 소견 메모 반영
+        if (req.userMemo() != null) {
+            report.setDoctorOpinion(req.userMemo());
         }
 
         String prompt = buildPrompt(study, report);
@@ -98,7 +102,7 @@ public class ReportService {
         return ReportResponse.from(report);
     }
 
-    // ── LLM 프롬프트 구성 ────────────────────────
+    // ── LLM 프롬프트 구성 (저장된 SR + 메모 + 검사정보) ──
     private String buildPrompt(Study study, Report report) {
         StringBuilder sb = new StringBuilder();
         sb.append("[검사 정보]\n");
@@ -107,19 +111,19 @@ public class ReportService {
             sb.append("- 검사 설명: ").append(study.getStudyDescription()).append('\n');
         if (study.getStudyDate() != null)
             sb.append("- 검사 일시: ").append(study.getStudyDate()).append('\n');
-        if (study.getSeriesDescription() != null)
-            sb.append("- 시리즈 설명: ").append(study.getSeriesDescription()).append('\n');
 
-        sb.append("\n[AI 분석 결과]\n");
+        sb.append("\n[AI 분석 결과(SR)]\n");
         sb.append("- 종합: ").append(nvl(report.getAiOverall(), "정보 없음")).append('\n');
         sb.append("- 이상 여부(AI): ")
           .append(report.getAiAbnormal() == null ? "미상" : (report.getAiAbnormal() ? "이상 의심" : "정상")).append('\n');
-        sb.append("- 라벨별 확률(JSON):\n").append(nvl(report.getAiResultJson(), "{}")).append('\n');
+        sb.append("- 결과 JSON:\n").append(nvl(report.getAiResultJson(), "{}")).append('\n');
+        if (report.getScKey() != null)
+            sb.append("- SC 이미지 key: ").append(report.getScKey()).append('\n');
 
         sb.append("\n[의사 소견 메모]\n");
         sb.append(nvl(report.getDoctorOpinion(), "(없음)")).append('\n');
 
-        sb.append("\n위 정보를 바탕으로 한국어 판독 소견서 초안을 작성하세요.");
+        sb.append("\n위 정보를 종합해 한국어 판독 소견서 초안을 작성하세요.");
         return sb.toString();
     }
 
