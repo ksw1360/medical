@@ -21,19 +21,20 @@ public class Study {
 
     private LocalDateTime studyDate;    // (0008,0020)+(0008,0030)
     private String studyDescription;    // (0008,1030)
-    private String seriesDescription;   // (기존 유지)
+    private String seriesDescription;
     private String accessionNumber;     // (0008,0050)
     private String referringPhysician;  // (0008,0090)
 
-    // 추가
     @Column(name = "dicom_study_id")
-    private String dicomStudyId;        // (0020,0010) DICOM Study ID (PK와 다름)
+    private String dicomStudyId;        // (0020,0010)
     private String institutionName;     // (0008,0080)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_id")
     private Patient patient;
 
+    // 소프트 삭제 플래그 (final 제거 → setter로 삭제/복구 가능)
+    @Builder.Default
     @Column(name = "del_flag")
-    private final boolean delFlag = false;
+    private boolean delFlag = false;
 }
