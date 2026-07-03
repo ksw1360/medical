@@ -24,11 +24,14 @@ public class DicomStorageService {
 
     private final S3Client s3;
     private final String bucket;
+    private final UploadMonitor uploadMonitor;
 
     public DicomStorageService(S3Client s3,
-                               @Value("${dicom.storage.s3-bucket:medical-dicom-store}") String bucket) {
+                               @Value("${dicom.storage.s3-bucket:medical-dicom-store}") String bucket,
+                               UploadMonitor uploadMonitor) {
         this.s3 = s3;
         this.bucket = bucket;
+        this.uploadMonitor = uploadMonitor;
     }
 
     /** de-id된 DICOM을 S3에 저장하고, DB에 넣을 상대 키(S3 key)를 리턴 */
@@ -39,7 +42,6 @@ public class DicomStorageService {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             Attributes fmi = attrs.createFileMetaInformation(transferSyntax);
-            // File 생성자와 동일하게 FMI는 ExplicitVRLittleEndian으로 인코딩
             try (DicomOutputStream dos =
                          new DicomOutputStream(baos, UID.ExplicitVRLittleEndian)) {
                 dos.writeDataset(fmi, attrs);
@@ -55,17 +57,12 @@ public class DicomStorageService {
                             .build(),
                     RequestBody.fromBytes(data));
 
-            return key;   // DB엔 상대 키만 (이전과 동일)
+            return key;
         } catch (IOException e) {
             throw new UncheckedIOException("DICOM 저장 실패: " + key, e);
         }
     }
 
-    /**
-     * S3 key → 임시 파일로 내려받아 Path 반환.
-     * dcm4che ImageReader / ONNX 전처리가 로컬 파일을 요구하므로 추론·미리보기 전에 사용.
-     * 사용이 끝나면 호출측에서 Files.deleteIfExists(...)로 반드시 삭제할 것.
-     */
     public Path downloadToTemp(String key) {
         try {
             Path tmp = Files.createTempFile("dicom-", ".dcm");
@@ -78,13 +75,22 @@ public class DicomStorageService {
         }
     }
 
-    /** 로컬 파일을 S3에 업로드 (AI 결과 SC 저장용). 업로드한 key 리턴. */
+    /**
+     * 로컬 파일을 S3에 업로드 (AI 결과 SC 저장용). 업로드한 key 리턴.
+     * 성공/실패를 UploadMonitor에 기록하고, 실패 시 예외를 전파(삼키지 않음).
+     */
     public String upload(String key, Path file, String contentType) {
-        s3.putObject(
-                PutObjectRequest.builder()
-                        .bucket(bucket).key(key).contentType(contentType).build(),
-                RequestBody.fromFile(file));
-        return key;
+        try {
+            s3.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucket).key(key).contentType(contentType).build(),
+                    RequestBody.fromFile(file));
+            uploadMonitor.recordSuccess(key);
+            return key;
+        } catch (RuntimeException e) {
+            uploadMonitor.recordFail(key, e.getClass().getSimpleName() + ": " + e.getMessage());
+            throw e;   // 조용히 삼키지 않고 전파
+        }
     }
 
     /** 상대 키(s3Key) → S3 객체 스트림. 호출부에서 try-with-resources로 닫을 것 */
