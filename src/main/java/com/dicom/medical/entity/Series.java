@@ -18,9 +18,15 @@ public class Series {
     @Column(unique = true, nullable = false)
     private String seriesInstanceUid;  // (0020,000E)
 
-    private String modality;     // CT / MR / CR / US ... (0008,0060)
-    private Integer seriesNumber;
-    private String bodyPart;     // 촬영부위
+    private String modality;     // (0008,0060)
+    private Integer seriesNumber; // (0020,0011)
+    private String bodyPart;     // (0008,0015) BodyPartExamined
+
+    // 추가
+    private String seriesDescription; // (0008,103E)
+    private String imageLaterality;   // (0020,0062) L/R
+    private String viewPosition;      // (0018,5101) AP/PA 등
+    private Double sliceThickness;    // (0018,0050)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "study_id")

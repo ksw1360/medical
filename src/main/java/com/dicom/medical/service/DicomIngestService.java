@@ -30,23 +30,21 @@ public class DicomIngestService {
     @Transactional
     public Long ingest(InputStream in) throws IOException {
         try (DicomInputStream dis = new DicomInputStream(in)) {
-            Attributes attrs = dis.readDataset();          // 읽기
-            String tsuid = dis.getTransferSyntax();         // 저장 시 재기록용
-            validate(attrs);                                // 검증
-            // 비식별화 적용: attrs를 in-place 수정
-            // (PatientName/BirthDate 제거, PatientID 해시 치환, UID 재생성)
-            // TODO: Series/Study Date 처리 여부는 DeidentifyService 정책 확인
+            Attributes attrs = dis.readDataset();
+            String tsuid = dis.getTransferSyntax();
+            validate(attrs);
+            // 비식별화 적용: attrs를 in-place 수정 (환자 식별 태그 제거/해시, UID 재생성)
+            // 기술 태그(pixelSpacing, rescale, viewPosition 등)는 유지됨
             deidentifyService.deidentify(attrs);
 
-            // 멱등성: 이미 저장된 SOPInstanceUID면 스킵
             String sop = attrs.getString(Tag.SOPInstanceUID);
             var existing = imageRepository.findBySopInstanceUid(sop);
             if (existing.isPresent()) return existing.get().getId();
 
-            DicomImage image = toEntityGraph(attrs);        // 분해 + 계층 upsert
-            image.setS3Key(storageService.store(attrs, tsuid)); // 로컬 저장 → 상대 키
+            DicomImage image = toEntityGraph(attrs);
+            image.setS3Key(storageService.store(attrs, tsuid));
 
-            return imageRepository.save(image).getId();     // DB 저장 → id
+            return imageRepository.save(image).getId();
         }
     }
 
@@ -64,6 +62,7 @@ public class DicomIngestService {
                         .patientName(a.getString(Tag.PatientName))
                         .birthDate(parseDate(a.getString(Tag.PatientBirthDate)))
                         .sex(a.getString(Tag.PatientSex))
+                        .age(a.getString(Tag.PatientAge))                       // 추가
                         .build()));
 
         // Study — studyInstanceUid로 find-or-create
@@ -74,6 +73,8 @@ public class DicomIngestService {
                         .studyDescription(a.getString(Tag.StudyDescription))
                         .accessionNumber(a.getString(Tag.AccessionNumber))
                         .referringPhysician(a.getString(Tag.ReferringPhysicianName))
+                        .dicomStudyId(a.getString(Tag.StudyID))                 // 추가 (0020,0010)
+                        .institutionName(a.getString(Tag.InstitutionName))      // 추가 (0008,0080)
                         .patient(patient)
                         .build()));
 
@@ -84,6 +85,10 @@ public class DicomIngestService {
                         .modality(a.getString(Tag.Modality))
                         .seriesNumber(a.getInt(Tag.SeriesNumber, 0))
                         .bodyPart(a.getString(Tag.BodyPartExamined))
+                        .seriesDescription(a.getString(Tag.SeriesDescription))  // 추가
+                        .imageLaterality(a.getString(Tag.ImageLaterality))      // 추가
+                        .viewPosition(a.getString(Tag.ViewPosition))            // 추가
+                        .sliceThickness(dbl(a, Tag.SliceThickness))             // 추가
                         .study(study)
                         .build()));
 
@@ -95,11 +100,28 @@ public class DicomIngestService {
                 .columns(a.getInt(Tag.Columns, 0))
                 .windowCenter(a.getDouble(Tag.WindowCenter, 0))
                 .windowWidth(a.getDouble(Tag.WindowWidth, 0))
+                .pixelSpacing(multi(a, Tag.PixelSpacing))                       // 추가
+                .rescaleSlope(dbl(a, Tag.RescaleSlope))                         // 추가
+                .rescaleIntercept(dbl(a, Tag.RescaleIntercept))                // 추가
+                .imageOrientation(multi(a, Tag.ImageOrientationPatient))       // 추가
+                .sliceLocation(dbl(a, Tag.SliceLocation))                      // 추가
                 .series(series)
                 .build();
     }
 
-    private LocalDate parseDate(String da) {            // yyyyMMdd
+    // ── 헬퍼 ──────────────────────────────
+    /** 값 있으면 Double, 없으면 null */
+    private static Double dbl(Attributes a, int tag) {
+        return a.containsValue(tag) ? a.getDouble(tag, 0) : null;
+    }
+
+    /** 다중값 태그 → '\' 구분 문자열 (없으면 null) */
+    private static String multi(Attributes a, int tag) {
+        String[] v = a.getStrings(tag);
+        return (v == null || v.length == 0) ? null : String.join("\\", v);
+    }
+
+    private LocalDate parseDate(String da) {
         if (da == null || da.isBlank()) return null;
         return LocalDate.parse(da, DateTimeFormatter.ofPattern("yyyyMMdd"));
     }

@@ -19,20 +19,25 @@ public class DicomImage {
     @Column(unique = true, nullable = false)
     private String sopInstanceUid;   // (0008,0018)
 
-    private Integer instanceNumber;
+    private Integer instanceNumber;  // (0020,0013)
 
-    // 원본 .dcm 위치 (DB엔 픽셀 안 넣음!)
     private String s3Key;
-    // private String filePath;  // 로컬 저장이면 이걸로
 
-    // 영상 출력용 — 이거 없으면 화면 시커멓게 나옴
     @Column(name = "image_rows")
-    private Integer rows;
+    private Integer rows;            // (0028,0010)
 
     @Column(name = "image_columns")
-    private Integer columns;
-    private Double windowCenter;   // (0028,1050)
-    private Double windowWidth;    // (0028,1051)
+    private Integer columns;         // (0028,0011)
+
+    private Double windowCenter;     // (0028,1050) = windowLevel
+    private Double windowWidth;      // (0028,1051)
+
+    // 추가 (배열은 DICOM처럼 '\' 구분 문자열로 저장 → 응답에서 Float[]로 변환)
+    private String pixelSpacing;     // (0028,0030) "row\col"
+    private Double rescaleSlope;     // (0028,1053)
+    private Double rescaleIntercept; // (0028,1052)
+    private String imageOrientation; // (0020,0037) 6개 값 '\' 구분
+    private Double sliceLocation;    // (0020,1041)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "series_id")

@@ -17,9 +17,12 @@ public class Patient {
     private Long id;
 
     @Column(unique = true)
-    private String patientId;   // DICOM (0010,0020)
+    private String patientId;   // (0010,0020)
 
     private String patientName; // (0010,0010)
-    private LocalDate birthDate;
-    private String sex;         // M / F / O
+    private LocalDate birthDate; // (0010,0030)
+    private String sex;          // (0010,0040) M/F/O
+
+    // 추가
+    private String age;          // (0010,1010) 예: 034Y
 }
