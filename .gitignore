@@ -41,3 +41,5 @@ images/
 ./dicom-store
 .env
 python/
+.zip
+.jar
