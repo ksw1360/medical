@@ -108,7 +108,7 @@ springdoc:
     operations-sorter: alpha
     tags-sorter: alpha
     auth:
-      password: L13tvzu312!
+      password: L13tvzu312#kimsw
 
 
 orthanc:
