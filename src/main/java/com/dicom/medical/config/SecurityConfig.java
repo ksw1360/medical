@@ -91,7 +91,7 @@ public class SecurityConfig {
                                 "/api/studies/**",
                                 "/api/dicom/**",
                                 "/api/reports/**",
-                                "/api/admin/**"
+                                "/api/admin/**",
                                 "/api/patients/**"      // ← 추가
                         ).permitAll()
 
