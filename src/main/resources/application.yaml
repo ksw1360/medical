@@ -68,7 +68,7 @@ jwt:
 swagger:
   auth:
     username: ${SWAGGER_AUTH_USERNAME:dev}
-    password: ${SWAGGER_AUTH_PASSWORD}
+    password: ${SWAGGER_AUTH_PASSWORD:localdev}
 
 kakao:
   client-id: ${KAKAO_CLIENT_ID}

@@ -92,6 +92,7 @@ public class SecurityConfig {
                                 "/api/dicom/**",
                                 "/api/reports/**",
                                 "/api/admin/**"
+                                "/api/patients/**"      // ← 추가
                         ).permitAll()
 
                         // 그 외 전부 JWT 인증 필요
