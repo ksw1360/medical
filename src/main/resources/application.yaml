@@ -107,6 +107,9 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: alpha
     tags-sorter: alpha
+    auth:
+      password: L13tvzu312!
+
 
 orthanc:
   base-url: http://localhost:8042
