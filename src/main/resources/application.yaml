@@ -1,16 +1,17 @@
 spring:
   config:
     import: optional:file:.env[.properties]
+
   datasource:
     url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+
   servlet:
     multipart:
       max-file-size: 100MB
       max-request-size: 100MB
-
 
   jpa:
     hibernate:
@@ -21,7 +22,7 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
 
-  mail:                          # 👈 여기! spring 바로 아래, datasource·jpa랑 같은 레벨
+  mail:
     host: smtp.gmail.com
     port: 587
     username: ${MAIL_USERNAME}
@@ -39,7 +40,7 @@ spring:
 
 server:
   port: 5000
-  forward-headers-strategy: framework      # ← 이 줄 추가
+  forward-headers-strategy: framework
 
 management:
   endpoints:
@@ -61,6 +62,13 @@ jwt:
   secret: ${JWT_SECRET}
   access-expiration: ${JWT_ACCESS_EXPIRATION}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION}
+
+# swagger Basic Auth 계정 (SecurityConfig에서 사용)
+# 비밀번호는 EB 환경 속성 SWAGGER_AUTH_PASSWORD에 설정
+swagger:
+  auth:
+    username: ${SWAGGER_AUTH_USERNAME:dev}
+    password: ${SWAGGER_AUTH_PASSWORD}
 
 kakao:
   client-id: ${KAKAO_CLIENT_ID}
@@ -90,14 +98,13 @@ aws:
   bedrock:
     enabled: true
     region: ${AWS_BEDROCK_REGION:ap-northeast-2}
-    model-id: ${AWS_BEDROCK_MODEL_ID:apac.anthropic.claude-haiku-4-5-20251001-v1:0
-# DICOM 로컬 저장 경로 (배포 시 S3로 교체 예정)
+    model-id: ${AWS_BEDROCK_MODEL_ID:apac.anthropic.claude-haiku-4-5-20251001-v1:0}   # ← } 닫음
+
+# DICOM 저장 (S3)
 dicom:
   storage:
     s3-bucket: medical-dicom-store
-#dicom:
-#  storage:
-#    local-path: ./dicom-store
+#    local-path: ./dicom-store   # 로컬 저장으로 되돌릴 때 사용
 
 springdoc:
   api-docs:
@@ -107,9 +114,6 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: alpha
     tags-sorter: alpha
-    auth:
-      password: L13tvzu312#kimsw
-
 
 orthanc:
   base-url: http://localhost:8042
