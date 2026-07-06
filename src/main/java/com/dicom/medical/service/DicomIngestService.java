@@ -53,7 +53,11 @@ public class DicomIngestService {
             if (existing.isPresent()) return existing.get().getId();
 
             DicomImage image = toEntityGraph(attrs);
-            image.setS3Key(storageService.store(attrs, tsuid));
+
+            // S3 저장 → 키 + 파일 크기 기록
+            var stored = storageService.store(attrs, tsuid);
+            image.setS3Key(stored.key());
+            image.setFileSizeBytes(stored.sizeBytes());
 
             return imageRepository.save(image).getId();
         }

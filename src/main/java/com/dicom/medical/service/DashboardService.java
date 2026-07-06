@@ -19,6 +19,7 @@ import java.util.List;
 /**
  * 대시보드 통계 집계 — 스토리지(DB/S3), 검사 통계(모달리티), DELFLAG 현황.
  * 장애 모니터링은 UploadMonitor/헬스체크 쪽에서 별도 제공.
+ * 용량 단위: GB (소수 3자리)
  */
 @Service
 public class DashboardService {
@@ -56,34 +57,36 @@ public class DashboardService {
         return out;
     }
 
-    // ── DELFLAG 현황 (삭제/정상 건수) ──────────────
+    // ── DELFLAG 현황 (삭제/정상 건수 + 용량) ──────────────
     @Transactional(readOnly = true)
     public List<DelFlagStatDto> delFlagStats() {
         List<Object[]> rows = em.createQuery(
-                "select st.delFlag, count(st) from Study st group by st.delFlag",
+                "select s.delFlag, count(distinct s.id), coalesce(sum(di.fileSizeBytes), 0) " +
+                        "from DicomImage di join di.series se join se.study s " +
+                        "group by s.delFlag",
                 Object[].class).getResultList();
         List<DelFlagStatDto> out = new ArrayList<>();
         for (Object[] r : rows) {
             boolean flag = Boolean.TRUE.equals(r[0]);
-            out.add(new DelFlagStatDto(flag, (Long) r[1]));
+            out.add(new DelFlagStatDto(flag, (Long) r[1], ((Number) r[2]).longValue()));
         }
         return out;
     }
 
-    // ── 스토리지 사용량 (DB + S3) ──────────────────
+    // ── 스토리지 사용량 (DB + S3, GB) ──────────────────
     @Transactional(readOnly = true)
     public StorageStatDto storageStats() {
-        double dbMb = dbSizeMb();
-        double s3Mb = s3SizeMb();
-        double total = (dbMb < 0 ? 0 : dbMb) + (s3Mb < 0 ? 0 : s3Mb);
-        return new StorageStatDto(round(dbMb), round(s3Mb), round(total));
+        double dbGb = dbSizeGb();
+        double s3Gb = s3SizeGb();
+        double total = (dbGb < 0 ? 0 : dbGb) + (s3Gb < 0 ? 0 : s3Gb);
+        return new StorageStatDto(round(dbGb), round(s3Gb), round(total));
     }
 
-    /** MySQL information_schema로 현재 스키마 크기(MB). 실패 시 -1. */
-    private double dbSizeMb() {
+    /** MySQL information_schema로 현재 스키마 크기(GB). 실패 시 -1. */
+    private double dbSizeGb() {
         try {
             Object v = em.createNativeQuery(
-                    "SELECT COALESCE(SUM(data_length + index_length),0)/1048576 " +
+                    "SELECT COALESCE(SUM(data_length + index_length),0)/1073741824 " +
                             "FROM information_schema.tables WHERE table_schema = DATABASE()")
                     .getSingleResult();
             return ((Number) v).doubleValue();
@@ -92,8 +95,8 @@ public class DashboardService {
         }
     }
 
-    /** S3 버킷 객체 크기 합(MB). ListBucket 권한 없으면 -1(측정 불가). */
-    private double s3SizeMb() {
+    /** S3 버킷 객체 크기 합(GB). ListBucket 권한 없으면 -1(측정 불가). */
+    private double s3SizeGb() {
         try {
             long bytes = 0;
             String token = null;
@@ -104,13 +107,13 @@ public class DashboardService {
                 for (S3Object o : resp.contents()) bytes += o.size();
                 token = Boolean.TRUE.equals(resp.isTruncated()) ? resp.nextContinuationToken() : null;
             } while (token != null);
-            return bytes / 1048576.0;
+            return bytes / 1073741824.0;
         } catch (Exception e) {
             return -1;  // ListBucket 권한 없음 등 → 측정 불가
         }
     }
 
     private static double round(double v) {
-        return v < 0 ? -1 : Math.round(v * 100) / 100.0;
+        return v < 0 ? -1 : Math.round(v * 1000) / 1000.0;
     }
 }

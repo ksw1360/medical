@@ -24,12 +24,12 @@ public class StorageStatsService {
     }
 
     public StorageStatDto getStorageStat() {
-        double dbMb = dbStatsRepository.getDbSizeMb();
-        double s3Mb = calcS3Mb();
-        return new StorageStatDto(dbMb, s3Mb, dbMb + s3Mb);
+        double dbGb = dbStatsRepository.getDbSizeGb();
+        double s3Gb = calcS3Gb();
+        return new StorageStatDto(dbGb, s3Gb, dbGb + s3Gb);
     }
 
-    private double calcS3Mb() {
+    private double calcS3Gb() {
         long totalBytes = 0;
         String token = null;
         do {
@@ -39,6 +39,6 @@ public class StorageStatsService {
             totalBytes += resp.contents().stream().mapToLong(S3Object::size).sum();
             token = Boolean.TRUE.equals(resp.isTruncated()) ? resp.nextContinuationToken() : null;
         } while (token != null);
-        return Math.round(totalBytes / 1024.0 / 1024.0 * 100) / 100.0;
+        return Math.round(totalBytes / 1024.0 / 1024.0 / 1024.0 * 1000) / 1000.0;  // GB, 소수 3자리
     }
 }

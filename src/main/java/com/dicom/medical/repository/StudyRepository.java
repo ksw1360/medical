@@ -66,7 +66,16 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
             "GROUP BY se.modality")
     List<Object[]> countStudiesByModality();
 
-    // DelFlag 현황
-    @Query("SELECT s.delFlag, COUNT(s) FROM Study s GROUP BY s.delFlag")
+    // DelFlag 현황: 건수 + 총 파일 용량(bytes)
+    // LEFT JOIN이라 이미지가 없는 Study도 건수에 포함됨 (용량은 0)
+    @Query("""
+    SELECT s.delFlag,
+           COUNT(DISTINCT s.id),
+           COALESCE(SUM(img.fileSizeBytes), 0)
+    FROM Study s
+    LEFT JOIN Series se ON se.study = s
+    LEFT JOIN DicomImage img ON img.series = se
+    GROUP BY s.delFlag
+""")
     List<Object[]> countByDelFlag();
 }

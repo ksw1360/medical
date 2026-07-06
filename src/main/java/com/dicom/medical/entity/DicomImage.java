@@ -23,6 +23,10 @@ public class DicomImage {
 
     private String s3Key;
 
+    /** S3에 저장된 DICOM 파일 크기 (bytes) — DELFLAG 용량 통계용 */
+    @Column(name = "file_size_bytes")
+    private Long fileSizeBytes;
+
     @Column(name = "image_rows")
     private Integer rows;            // (0028,0010)
 

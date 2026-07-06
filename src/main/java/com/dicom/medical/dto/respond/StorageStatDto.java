@@ -1,3 +1,4 @@
 package com.dicom.medical.dto.respond;
 
-public record StorageStatDto(double dbMb, double s3Mb, double totalMb) {}
+/** 스토리지 사용량 (GB 단위) */
+public record StorageStatDto(double dbGb, double s3Gb, double totalGb) {}

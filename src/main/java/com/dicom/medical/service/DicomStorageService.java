@@ -22,6 +22,9 @@ import java.nio.file.Path;
 @Service
 public class DicomStorageService {
 
+    /** 저장 결과: S3 키 + 파일 크기(bytes) */
+    public record StoredObject(String key, long sizeBytes) {}
+
     private final S3Client s3;
     private final String bucket;
     private final UploadMonitor uploadMonitor;
@@ -34,8 +37,8 @@ public class DicomStorageService {
         this.uploadMonitor = uploadMonitor;
     }
 
-    /** de-id된 DICOM을 S3에 저장하고, DB에 넣을 상대 키(S3 key)를 리턴 */
-    public String store(Attributes attrs, String transferSyntax) {
+    /** de-id된 DICOM을 S3에 저장하고, DB에 넣을 상대 키(S3 key)와 파일 크기를 리턴 */
+    public StoredObject store(Attributes attrs, String transferSyntax) {
         String key = attrs.getString(Tag.StudyInstanceUID) + "/"
                 + attrs.getString(Tag.SeriesInstanceUID) + "/"
                 + attrs.getString(Tag.SOPInstanceUID) + ".dcm";
@@ -57,7 +60,7 @@ public class DicomStorageService {
                             .build(),
                     RequestBody.fromBytes(data));
 
-            return key;
+            return new StoredObject(key, data.length);
         } catch (IOException e) {
             throw new UncheckedIOException("DICOM 저장 실패: " + key, e);
         }

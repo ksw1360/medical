@@ -24,7 +24,7 @@ public class AdminStatsController {
     private final StudyRepository studyRepository;
 
     @GetMapping("/storage")
-    @Operation(summary = "스토리지 사용량", description = "MySQL DB 용량 + S3 용량 합산")
+    @Operation(summary = "스토리지 사용량", description = "MySQL DB 용량 + S3 용량 합산 (GB)")
     public StorageStatDto storage() {
         return storageStatsService.getStorageStat();
     }
@@ -38,10 +38,13 @@ public class AdminStatsController {
     }
 
     @GetMapping("/delflag")
-    @Operation(summary = "DELFLAG 현황")
+    @Operation(summary = "DELFLAG 현황", description = "삭제/정상 건수 + 총 파일 용량(bytes)")
     public List<DelFlagStatDto> delFlagStats() {
         return studyRepository.countByDelFlag().stream()
-                .map(row -> new DelFlagStatDto((Boolean) row[0], (Long) row[1]))
+                .map(row -> new DelFlagStatDto(
+                        (Boolean) row[0],
+                        (Long) row[1],
+                        ((Number) row[2]).longValue()))
                 .toList();
     }
 }
