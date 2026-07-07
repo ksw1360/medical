@@ -121,14 +121,14 @@ public class InferenceController {
             try {
                 tmp = storageService.downloadToTemp(img.getS3Key());   // try 안으로: 원본 없어도 전체 안 죽음
                 InferenceService.InferenceResult r = service.infer(tmp, MODEL);
-                slices.add(new SliceResult(instNo, img.getSopInstanceUid(), round(r.abnormal()), r.label()));
+                slices.add(new SliceResult(instNo, img.getSopInstanceUid(), round(r.abnormal()), r.label(), img.getS3Key()));
             } catch (software.amazon.awssdk.services.s3.model.NoSuchKeyException e) {
                 System.err.println("원본 없음(S3) sop=" + img.getSopInstanceUid() + " key=" + img.getS3Key());
-                slices.add(new SliceResult(instNo, img.getSopInstanceUid(), -1f, "원본없음(S3)"));
+                slices.add(new SliceResult(instNo, img.getSopInstanceUid(), -1f, "원본없음(S3)", img.getS3Key()));
             } catch (Exception e) {
                 System.err.println("슬라이스 추론 실패 sop=" + img.getSopInstanceUid()
                         + " : " + e.getClass().getSimpleName() + " " + e.getMessage());
-                slices.add(new SliceResult(instNo, img.getSopInstanceUid(), -1f, "추론실패"));
+                slices.add(new SliceResult(instNo, img.getSopInstanceUid(), -1f, "추론실패", img.getS3Key()));
             } finally {
                 if (tmp != null) {
                     try { Files.deleteIfExists(tmp); } catch (IOException ignored) {}
@@ -149,7 +149,7 @@ public class InferenceController {
     }
     private static float round(float v) { return Math.round(v * 1000) / 1000f; }
 
-    record SliceResult(int instanceNumber, String sopUid, float abnormal, String label) {}
+    record SliceResult(int instanceNumber, String sopUid, float abnormal, String label, String s3Key) {}
     record SeriesInferResponse(Long seriesId, int total, long abnormalCount,
                                float maxAbnormal, String overall, List<SliceResult> slices) {}
     record SeriesGroup(Long seriesId, String modality, String bodyPart, Integer seriesNumber,
