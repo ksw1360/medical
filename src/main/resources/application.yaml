@@ -119,3 +119,7 @@ orthanc:
   base-url: http://localhost:8042
   username: orthanc
   password: orthanc
+
+logging:
+  level:
+    org.apache.coyote.http11.Http11Processor: ERROR
