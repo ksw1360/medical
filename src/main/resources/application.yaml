@@ -19,7 +19,7 @@ spring:
     show-sql: true
     properties:
       hibernate:
-        format_sql: true
+        format_sql: true #운영시엔 FALSE
         dialect: org.hibernate.dialect.MySQLDialect
 
   mail:
@@ -116,7 +116,7 @@ springdoc:
     tags-sorter: alpha
 
 orthanc:
-  base-url: http://localhost:8042
+  base-url: http://localhost:8042 # 운영에선 제거
   username: orthanc
   password: orthanc
 
