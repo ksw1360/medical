@@ -9,6 +9,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
+import java.io.File;
+
 @Service
 public class StorageStatsService {
 
@@ -23,11 +25,25 @@ public class StorageStatsService {
         this.bucket = bucket;
     }
 
-    public StorageStatDto getStorageStat() {
-        double dbGb = dbStatsRepository.getDbSizeGb();
-        double s3Gb = calcS3Gb();
-        return new StorageStatDto(dbGb, s3Gb, dbGb + s3Gb);
-    }
+//    public StorageStatDto getStorageStat() {
+//        double dbGb = dbStatsRepository.getDbSizeGb();
+//        double s3Gb = calcS3Gb();
+//        return new StorageStatDto(dbGb, s3Gb, dbGb + s3Gb);
+//    }
+// StorageStatsService.java — getStorageStat() 수정
+public StorageStatDto getStorageStat() {
+    double dbGb = dbStatsRepository.getDbSizeGb();
+    double s3Gb = calcS3Gb();
+
+    File root = new File("/");
+    double diskTotalGb = round(root.getTotalSpace() / 1024.0 / 1024 / 1024);
+    double diskFreeGb  = round(root.getUsableSpace() / 1024.0 / 1024 / 1024);
+    double diskUsedPercent = Math.round((1 - diskFreeGb / diskTotalGb) * 1000) / 10.0;
+
+    return new StorageStatDto(dbGb, s3Gb, dbGb + s3Gb, diskTotalGb, diskFreeGb, diskUsedPercent);
+}
+
+    private static double round(double v) { return Math.round(v * 1000) / 1000.0; }
 
     private double calcS3Gb() {
         long totalBytes = 0;

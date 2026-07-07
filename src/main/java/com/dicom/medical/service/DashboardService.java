@@ -79,15 +79,22 @@ public class DashboardService {
         double dbGb = dbSizeGb();
         double s3Gb = s3SizeGb();
         double total = (dbGb < 0 ? 0 : dbGb) + (s3Gb < 0 ? 0 : s3Gb);
-        return new StorageStatDto(round(dbGb), round(s3Gb), round(total));
+
+        java.io.File root = new java.io.File("/");
+        double diskTotalGb = root.getTotalSpace() / 1073741824.0;
+        double diskFreeGb  = root.getUsableSpace() / 1073741824.0;
+        double diskUsedPercent = Math.round((1 - diskFreeGb / diskTotalGb) * 1000) / 10.0;
+
+        return new StorageStatDto(round(dbGb), round(s3Gb), round(total),
+                round(diskTotalGb), round(diskFreeGb), diskUsedPercent);
     }
 
     /** MySQL information_schema로 현재 스키마 크기(GB). 실패 시 -1. */
     private double dbSizeGb() {
         try {
             Object v = em.createNativeQuery(
-                    "SELECT COALESCE(SUM(data_length + index_length),0)/1073741824 " +
-                            "FROM information_schema.tables WHERE table_schema = DATABASE()")
+                            "SELECT COALESCE(SUM(data_length + index_length),0)/1073741824 " +
+                                    "FROM information_schema.tables WHERE table_schema = DATABASE()")
                     .getSingleResult();
             return ((Number) v).doubleValue();
         } catch (Exception e) {
