@@ -22,21 +22,21 @@ spring:
         format_sql: true #운영시엔 FALSE
         dialect: org.hibernate.dialect.MySQLDialect
 
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
+#  mail:
+#    host: smtp.gmail.com
+#    port: 587
+#    username: ${MAIL_USERNAME}
+#    password: ${MAIL_PASSWORD}
+#    properties:
+#      mail:
+#        smtp:
+#          auth: true
+#          starttls:
+#            enable: true
+#            required: true
+#          connectiontimeout: 5000
+#          timeout: 5000
+#          writetimeout: 5000
 
 server:
   port: 5000
@@ -70,20 +70,20 @@ swagger:
     username: ${SWAGGER_AUTH_USERNAME:dev}
     password: ${SWAGGER_AUTH_PASSWORD:localdev}
 
-kakao:
-  client-id: ${KAKAO_CLIENT_ID}
-  client-secret: ${KAKAO_CLIENT_SECRET}
-  redirect-uri: ${KAKAO_REDIRECT_URI}
-
-google:
-  client-id: ${GOOGLE_CLIENT_ID}
-  client-secret: ${GOOGLE_CLIENT_SECRET}
-  redirect-uri: ${GOOGLE_REDIRECT_URI}
-
-naver:
-  client-id: ${NAVER_CLIENT_ID}
-  client-secret: ${NAVER_CLIENT_SECRET}
-  redirect-uri: ${NAVER_REDIRECT_URI}
+#kakao:
+#  client-id: ${KAKAO_CLIENT_ID}
+#  client-secret: ${KAKAO_CLIENT_SECRET}
+#  redirect-uri: ${KAKAO_REDIRECT_URI}
+#
+#google:
+#  client-id: ${GOOGLE_CLIENT_ID}
+#  client-secret: ${GOOGLE_CLIENT_SECRET}
+#  redirect-uri: ${GOOGLE_REDIRECT_URI}
+#
+#naver:
+#  client-id: ${NAVER_CLIENT_ID}
+#  client-secret: ${NAVER_CLIENT_SECRET}
+#  redirect-uri: ${NAVER_REDIRECT_URI}
 
 nts:
   service-key: ${NTS_SERVICE_KEY}
@@ -114,11 +114,6 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: alpha
     tags-sorter: alpha
-
-orthanc:
-  base-url: http://localhost:8042 # 운영에선 제거
-  username: orthanc
-  password: orthanc
 
 logging:
   level:
