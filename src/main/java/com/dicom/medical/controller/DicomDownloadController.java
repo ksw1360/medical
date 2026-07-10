@@ -29,6 +29,19 @@ public class DicomDownloadController {
 
     private final DicomStorageService storageService;
 
+    /**
+     * S3 프리사인드 GET URL 발급 — 큰 .dcm은 이 URL로 S3에서 직접 다운로드.
+     * (Amplify/Lambda 프록시의 6MB 응답 한도 우회)
+     * 예: GET /api/dicom/presign?path=ai-sc/2.25....dcm → {"url":"https://s3..."}
+     */
+    @GetMapping("/presign")
+    @Operation(summary = "프리사인드 다운로드 URL 발급",
+            description = "S3 key를 받아 1시간짜리 프리사인드 GET URL을 반환한다. 프론트는 이 URL로 S3에서 직접 받는다.")
+    public ResponseEntity<java.util.Map<String, String>> presign(@RequestParam("path") String path) {
+        String url = storageService.presignGetUrl(path, java.time.Duration.ofHours(1));
+        return ResponseEntity.ok(java.util.Map.of("key", path, "url", url));
+    }
+
     @GetMapping("/download")
     @Operation(summary = "DICOM 다운로드",
             description = "S3 key(원본 s3Key 또는 결과 scFile)를 받아 .dcm 파일을 첨부파일로 내려준다.")

@@ -12,8 +12,11 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.ByteArrayOutputStream;
+import java.time.Duration;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -26,15 +29,31 @@ public class DicomStorageService {
     public record StoredObject(String key, long sizeBytes) {}
 
     private final S3Client s3;
+    private final S3Presigner presigner;
     private final String bucket;
     private final UploadMonitor uploadMonitor;
 
     public DicomStorageService(S3Client s3,
+                               S3Presigner presigner,
                                @Value("${dicom.storage.s3-bucket:medical-dicom-store}") String bucket,
                                UploadMonitor uploadMonitor) {
         this.s3 = s3;
+        this.presigner = presigner;
         this.bucket = bucket;
         this.uploadMonitor = uploadMonitor;
+    }
+
+    /**
+     * S3 GET 프리사인드 URL 생성 — 프론트가 S3에서 직접 다운로드하게 해서
+     * Amplify(Lambda) 6MB 응답 한도와 서버 대역폭 부담을 우회한다.
+     */
+    public String presignGetUrl(String key, Duration ttl) {
+        GetObjectRequest get = GetObjectRequest.builder().bucket(bucket).key(key).build();
+        GetObjectPresignRequest req = GetObjectPresignRequest.builder()
+                .signatureDuration(ttl)
+                .getObjectRequest(get)
+                .build();
+        return presigner.presignGetObject(req).url().toString();
     }
 
     /** de-id된 DICOM을 S3에 저장하고, DB에 넣을 상대 키(S3 key)와 파일 크기를 리턴 */
