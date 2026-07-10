@@ -31,8 +31,8 @@ public class Preprocessor {
         }
         int rows = ds.getInt(Tag.Rows, 0);
         int cols = ds.getInt(Tag.Columns, 0);
-        double wc = ds.getDouble(Tag.WindowCenter, 2047);  // 없으면 기본값
-        double ww = ds.getDouble(Tag.WindowWidth, 4096);
+        double wc = ds.getDouble(Tag.WindowCenter, Double.NaN);  // 없으면 픽셀 min/max로 자동 산출
+        double ww = ds.getDouble(Tag.WindowWidth, Double.NaN);
 
         // --- 2) raw 픽셀(윈도잉 미적용, 0~4095) ---
         //   dcm4che-imageio 의 DicomImageReader 가 SPI 로 등록돼 있어 ImageIO 가 자동으로 찾는다.
@@ -47,6 +47,17 @@ public class Preprocessor {
             Raster raster = reader.readRaster(0, null);
             px = raster.getSamples(0, 0, cols, rows, 0, (int[]) null);  // 길이 = rows*cols
             reader.dispose();
+        }
+
+        // --- 2.5) 윈도잉 태그가 없으면 픽셀 min/max 로 자동 윈도잉 ---
+        //   (8bit JPEG X-ray 등 WC/WW 미기록 파일에서 기본값 2047/4096을 쓰면
+        //    입력이 전부 0 근처로 눌려 모델이 새까만 이미지를 보게 되는 문제 방지)
+        if (Double.isNaN(wc) || Double.isNaN(ww) || ww <= 0) {
+            int mn = Integer.MAX_VALUE, mx = Integer.MIN_VALUE;
+            for (int v : px) { if (v < mn) mn = v; if (v > mx) mx = v; }
+            if (mx <= mn) mx = mn + 1;
+            ww = mx - mn;
+            wc = mn + ww / 2.0;
         }
 
         // --- 3) 윈도잉 → [0,1] ---

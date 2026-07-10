@@ -54,8 +54,8 @@ public class ScWriter {
         }
         int rows = src.getInt(Tag.Rows, 0);
         int cols = src.getInt(Tag.Columns, 0);
-        double wc = src.getDouble(Tag.WindowCenter, 2047);
-        double ww = src.getDouble(Tag.WindowWidth, 4096);
+        double wc = src.getDouble(Tag.WindowCenter, Double.NaN);
+        double ww = src.getDouble(Tag.WindowWidth, Double.NaN);
 
         int[] px;
         try (ImageInputStream iis = ImageIO.createImageInputStream(srcDcm.toFile())) {
@@ -66,6 +66,15 @@ public class ScWriter {
             Raster raster = reader.readRaster(0, null);
             px = raster.getSamples(0, 0, cols, rows, 0, (int[]) null);
             reader.dispose();
+        }
+
+        // --- 1.5) 윈도잉 태그가 없으면 픽셀 min/max 로 자동 윈도잉 (검은 SC 방지) ---
+        if (Double.isNaN(wc) || Double.isNaN(ww) || ww <= 0) {
+            int mn = Integer.MAX_VALUE, mx = Integer.MIN_VALUE;
+            for (int v : px) { if (v < mn) mn = v; if (v > mx) mx = v; }
+            if (mx <= mn) mx = mn + 1;
+            ww = mx - mn;
+            wc = mn + ww / 2.0;
         }
 
         // --- 2) 윈도잉 → 8bit RGB BufferedImage ---
