@@ -13,7 +13,7 @@ import java.util.NoSuchElementException;
 @RestController
 @RequestMapping("/api/patients")
 @RequiredArgsConstructor
-@Tag(name = "⑫ 환자 조회", description = "환자 별칭·기본 정보 조회")
+@Tag(name = "11. 환자 조회", description = "환자 별칭·기본 정보 조회")
 public class PatientController {
 
     private final PatientRepository patientRepository;

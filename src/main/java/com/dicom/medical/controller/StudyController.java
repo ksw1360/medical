@@ -21,7 +21,7 @@ import java.util.List;
 
 import static org.springframework.format.annotation.DateTimeFormat.ISO;
 
-@Tag(name = "⑧ 검사 조회·검색", description = "DICOM 검사(Study) 목록 조회 및 검색 API")
+@Tag(name = "07. 검사 조회·검색", description = "DICOM 검사(Study) 목록 조회 및 검색 API")
 @RestController
 @RequestMapping("/api/studies")
 @RequiredArgsConstructor

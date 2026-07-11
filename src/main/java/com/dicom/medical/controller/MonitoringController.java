@@ -21,7 +21,7 @@ import java.time.Instant;
  */
 @RestController
 @RequestMapping("/api/admin")
-@Tag(name = "⑯ 장애 모니터링", description = "시스템 헬스체크 + SC 업로드 성공/실패 현황")
+@Tag(name = "15. 장애 모니터링", description = "시스템 헬스체크 + SC 업로드 성공/실패 현황")
 public class MonitoringController {
 
     private final StudyRepository studyRepository;

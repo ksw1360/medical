@@ -67,7 +67,7 @@ public class InferenceController {
 
     // ── 단건 추론 (dicomPath) ───────────────────────────
     @PostMapping("/infer")
-    @Tag(name = "③-b AI 추론만 (저장 없음 · 일괄)",description = "Modality 자동 판별 후 CT/X-ray 모델로 추론")
+    @Tag(name = "04. AI 추론만 (저장 없음 · 일괄)",description = "Modality 자동 판별 후 CT/X-ray 모델로 추론")
     @Operation(summary = "AI 추론 실행 (Modality 자동 라우팅)",
             description = "DICOM의 Modality를 보고 CT면 이진 정상/비정상, X-ray(CR/DX)면 18병명 다중라벨로 추론.")
     public Response infer(@RequestBody InferRequest req) throws Exception {
@@ -117,7 +117,7 @@ public class InferenceController {
 
     // ── Series 단위 일괄 추론 ───────────────────────────
     @PostMapping("/infer/series/{seriesId}")
-    @Tag(name = "③-b AI 추론만 (저장 없음 · 일괄)",description = "검사(Series) 전체 슬라이스 일괄 추론")
+    @Tag(name = "04. AI 추론만 (저장 없음 · 일괄)",description = "검사(Series) 전체 슬라이스 일괄 추론")
     @Operation(summary = "Series 단위 AI 추론 (Modality 라우팅)",
             description = "한 Series의 모든 슬라이스를 Modality에 맞는 모델로 추론하고 집계해 반환. "
                     + "abnormalOnly=true면 집계(total/abnormalCount 등)는 전체 기준 그대로 두고 "
@@ -136,7 +136,7 @@ public class InferenceController {
 
     // ── Study 단위 (Series별 그룹핑) ─────────────────────
     @PostMapping("/infer/study/{studyId}")
-    @Tag(name = "③-b AI 추론만 (저장 없음 · 일괄)",description = "검사(Study) 전체 슬라이스 일괄 추론")
+    @Tag(name = "04. AI 추론만 (저장 없음 · 일괄)",description = "검사(Study) 전체 슬라이스 일괄 추론")
     @Operation(summary = "Study 단위 AI 추론 (Series별 그룹핑 + Modality 라우팅)",
             description = "한 Study의 영상을 Series별로 묶어 각 Series의 Modality에 맞는 모델로 추론. "
                     + "일부 슬라이스가 원본없음/추론실패여도 해당 슬라이스만 실패 표시하고 전체는 정상 응답. "

@@ -19,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/dicomweb")
 @RequiredArgsConstructor
-@Tag(name = "① DICOM 업로드·수신", description = "DICOM 파일 업로드 · 비식별 · S3 저장 → 이미지 id 리스트")
+@Tag(name = "01. DICOM 업로드·수신", description = "DICOM 파일 업로드 · 비식별 · S3 저장 → 이미지 id 리스트")
 public class DicomUploadController {
 
     private final DicomIngestService ingestService;
