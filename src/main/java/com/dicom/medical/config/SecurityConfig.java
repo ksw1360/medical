@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()                 // 로그인/회원가입
                         .requestMatchers("/actuator/health").permitAll()          // ELB 헬스체크
                         .requestMatchers("/favicon.ico", "/error").permitAll()
+                        .requestMatchers("/", "/index.html").permitAll()          // 데모 프론트 (static/index.html)
 
                         // TODO: 개발용 임시 개방 — 운영 전환 시 authenticated()로 전환
                         .requestMatchers(
