@@ -15,7 +15,7 @@ import java.util.List;
  * 검사(Study) 소프트 삭제 / 복구.
  * /api/studies/** 는 이미 permitAll 이라 시큐리티 추가 설정 불필요.
  */
-@Tag(name = "검사 삭제/복구", description = "Study 소프트 삭제(del_flag=1) 및 복구(del_flag=0)")
+@Tag(name = "⑪ 검사 삭제·복구 (휴지통)", description = "Study 소프트 삭제(del_flag=1) 및 복구(del_flag=0)")
 @RestController
 @RequestMapping("/api/studies")
 @RequiredArgsConstructor

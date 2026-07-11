@@ -35,7 +35,7 @@ import java.util.zip.ZipInputStream;
 @RestController
 @RequestMapping("/dicomweb")
 @RequiredArgsConstructor
-@Tag(name = "DICOM 수신", description = "ZIP 업로드 → 압축 해제 → .dcm 일괄 ingest")
+@Tag(name = "① DICOM 업로드·수신", description = "ZIP 업로드 → 압축 해제 → .dcm 일괄 ingest")
 public class DicomZipUploadController {
 
     private final DicomIngestService ingestService;

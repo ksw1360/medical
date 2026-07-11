@@ -32,7 +32,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/ai")
-@Tag(name = "AI 결과창", description = "SC(이미지)+SR(추론내용) 통합 결과 + 저장")
+@Tag(name = "③ AI 판독 (추론+SC+Report 저장)", description = "SC(이미지)+SR(추론내용) 통합 결과 + Report 저장")
 public class AiResultController {
 
     private final InferenceService service;            // CT 이진

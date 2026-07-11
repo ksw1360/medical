@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "판독 리포트", description = "AI 결과(SC/SR) + 의사 소견 기반 LLM 판독 소견서 생성/조회/확정")
+@Tag(name = "⑤⑥⑦ 판독 리포트 (LLM 생성·의사 소견·확정)", description = "AI 결과(SC/SR) + 의사 소견 기반 LLM 판독 소견서 생성/조회/확정")
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor

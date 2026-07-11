@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 뷰어용 Study 메타데이터 API — 한 번 호출로 Study/Series/Instance 전체 메타데이터를 계층 반환.
  * 픽셀은 instance.pixelDataUrl(S3)로 프론트가 지연 로딩.
  */
-@Tag(name = "뷰어 메타데이터", description = "Study 단위 전체 메타데이터(계층) 조회")
+@Tag(name = "⑨ 뷰어 메타데이터 (Study 계층)", description = "Study 단위 전체 메타데이터(계층) 조회")
 @RestController
 @RequestMapping("/api/studies")
 public class StudyMetadataController {

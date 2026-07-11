@@ -26,7 +26,7 @@ public class DicomPathController {
 
     /** GET /api/ai/path/{id} -> {"path": "<study>/<series>/<sop>.dcm"} (S3 key) */
     @GetMapping("/path/{id}")
-    @Tag(name = "AI 파이프라인 · 경로", description = "업로드 영상 ID → S3 key 변환 (추론 입력용)")
+    @Tag(name = "② 경로 조회 (id → S3 key)", description = "업로드 영상 ID → S3 key 변환 (추론 입력용)")
     public ResponseEntity<?> path(@PathVariable Long id) {
         return imageRepository.findById(id)
                 .map(img -> ResponseEntity.ok(Map.of(
