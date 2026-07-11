@@ -119,15 +119,19 @@ public class InferenceController {
     @PostMapping("/infer/series/{seriesId}")
     @Tag(name = "AI 추론", description = "검사(Series) 전체 슬라이스 일괄 추론")
     @Operation(summary = "Series 단위 AI 추론 (Modality 라우팅)",
-            description = "한 Series의 모든 슬라이스를 Modality에 맞는 모델로 추론하고 집계해 반환.")
-    public SeriesInferResponse inferSeries(@PathVariable Long seriesId) {
+            description = "한 Series의 모든 슬라이스를 Modality에 맞는 모델로 추론하고 집계해 반환. "
+                    + "abnormalOnly=true면 집계(total/abnormalCount 등)는 전체 기준 그대로 두고 "
+                    + "slices 목록만 이상 의심 슬라이스로 필터링해 반환.")
+    public SeriesInferResponse inferSeries(@PathVariable Long seriesId,
+                                           @RequestParam(defaultValue = "false") boolean abnormalOnly) {
         Series series = seriesRepository.findById(seriesId)
                 .orElseThrow(() -> new IllegalArgumentException("Series 없음: " + seriesId));
         List<DicomImage> images = imageRepository.findBySeries_IdOrderByInstanceNumber(seriesId);
         if (images.isEmpty()) throw new IllegalArgumentException("해당 Series에 영상이 없음: " + seriesId);
         List<SliceResult> slices = inferImages(images, series.getModality());
         return new SeriesInferResponse(seriesId, series.getModality(), series.getBodyPart(),
-                slices.size(), countAbnormal(slices), maxAbnormal(slices), overall(slices), slices);
+                slices.size(), countAbnormal(slices), maxAbnormal(slices), overall(slices),
+                filterSlices(slices, abnormalOnly));
     }
 
     // ── Study 단위 (Series별 그룹핑) ─────────────────────
@@ -135,8 +139,11 @@ public class InferenceController {
     @Tag(name = "AI 추론", description = "검사(Study) 전체 슬라이스 일괄 추론")
     @Operation(summary = "Study 단위 AI 추론 (Series별 그룹핑 + Modality 라우팅)",
             description = "한 Study의 영상을 Series별로 묶어 각 Series의 Modality에 맞는 모델로 추론. "
-                    + "일부 슬라이스가 원본없음/추론실패여도 해당 슬라이스만 실패 표시하고 전체는 정상 응답.")
-    public StudyInferResponse inferStudy(@PathVariable Long studyId) {
+                    + "일부 슬라이스가 원본없음/추론실패여도 해당 슬라이스만 실패 표시하고 전체는 정상 응답. "
+                    + "abnormalOnly=true면 집계는 전체 기준 그대로 두고 각 Series의 slices 목록만 "
+                    + "이상 의심 슬라이스로 필터링해 반환.")
+    public StudyInferResponse inferStudy(@PathVariable Long studyId,
+                                         @RequestParam(defaultValue = "false") boolean abnormalOnly) {
         List<Series> seriesList = seriesRepository.findByStudy_IdOrderBySeriesNumber(studyId);
         if (seriesList.isEmpty()) throw new IllegalArgumentException("해당 Study에 Series가 없음: " + studyId);
         List<SeriesGroup> groups = new ArrayList<>();
@@ -146,7 +153,8 @@ public class InferenceController {
             List<SliceResult> slices = inferImages(images, s.getModality());
             groups.add(new SeriesGroup(
                     s.getId(), s.getModality(), s.getBodyPart(), s.getSeriesNumber(),
-                    slices.size(), countAbnormal(slices), maxAbnormal(slices), overall(slices), slices));
+                    slices.size(), countAbnormal(slices), maxAbnormal(slices), overall(slices),
+                    filterSlices(slices, abnormalOnly)));
         }
         if (groups.isEmpty()) throw new IllegalArgumentException("해당 Study에 영상이 없음: " + studyId);
         int total = groups.stream().mapToInt(SeriesGroup::total).sum();
@@ -229,6 +237,11 @@ public class InferenceController {
     }
 
     // ── 집계 헬퍼 ───────────────────────────────────────
+    /** abnormalOnly=true면 이상 의심 슬라이스만 반환 (집계는 필터 전 전체 기준으로 이미 계산됨) */
+    private static List<SliceResult> filterSlices(List<SliceResult> slices, boolean abnormalOnly) {
+        if (!abnormalOnly) return slices;
+        return slices.stream().filter(SliceResult::abnormal).toList();
+    }
     private static long countAbnormal(List<SliceResult> slices) {
         return slices.stream().filter(SliceResult::abnormal).count();
     }
