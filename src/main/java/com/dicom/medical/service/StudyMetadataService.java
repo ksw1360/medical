@@ -26,6 +26,7 @@ public class StudyMetadataService {
     private final StudyRepository studyRepository;
     private final SeriesRepository seriesRepository;
     private final DicomImageRepository imageRepository;
+    private final DicomStorageService storageService;
 
     private static final DateTimeFormatter D = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter T = DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -90,9 +91,18 @@ public class StudyMetadataService {
                 pixelDataUrl(i.getS3Key()));
     }
 
-    private static String pixelDataUrl(String s3Key) {
+    /**
+     * 픽셀 데이터 URL — S3 프리사인드 GET URL(1시간)로 프론트가 S3에서 직접 로드.
+     * 프록시(/api/dicom/download) 경유 시 Amplify(Lambda) 6MB 응답 한도에 걸리는 문제 해결.
+     */
+    private String pixelDataUrl(String s3Key) {
         if (s3Key == null) return null;
-        return "/api/dicom/download?path=" + URLEncoder.encode(s3Key, StandardCharsets.UTF_8);
+        try {
+            return storageService.presignGetUrl(s3Key, java.time.Duration.ofHours(1));
+        } catch (Exception e) {
+            // 프리사인 실패 시 기존 프록시 다운로드로 폴백
+            return "/api/dicom/download?path=" + URLEncoder.encode(s3Key, StandardCharsets.UTF_8);
+        }
     }
 
     private static Float toFloat(Double d) {
