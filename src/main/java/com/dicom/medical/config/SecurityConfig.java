@@ -89,6 +89,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
                 "https://ksw1360.asia",
+                "https://www.ksw1360.asia",
                 "http://localhost:3000",
                 "https://master.d2ahqjf7y3gh6b.amplifyapp.com"
         ));
