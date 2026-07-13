@@ -17,7 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/stats")
 @RequiredArgsConstructor
-@Tag(name = "운영 통계", description = "스토리지 사용량 · 검사 통계 · DELFLAG 현황")
+@Tag(name = "14. 운영 통계", description = "스토리지 사용량 · 검사 통계 · DELFLAG 현황")
 public class AdminStatsController {
 
     private final StorageStatsService storageStatsService;

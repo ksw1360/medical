@@ -36,11 +36,12 @@ class DashboardControllerTest {
         when(dashboardService.modalityStats()).thenReturn(List.of());
         when(dashboardService.delFlagStats()).thenReturn(List.of());
         when(dashboardService.storageStats())
-                .thenReturn(new com.dicom.medical.dto.respond.StorageStatDto(0.2, 55.0, 55.2));
+                .thenReturn(new com.dicom.medical.dto.respond.StorageStatDto(
+                        0.2, 55.0, 55.2, 500.0, 400.0, 20.0));
 
         mockMvc.perform(get("/api/admin/dashboard"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.counts.studies").value(3))
-                .andExpect(jsonPath("$.storage.totalMb").value(55.2));
+                .andExpect(jsonPath("$.storage.totalGb").value(55.2));
     }
 }

@@ -22,7 +22,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/admin")
-@Tag(name = "운영 대시보드", description = "스토리지·검사 통계·DELFLAG·모니터링 통합")
+@Tag(name = "13. 운영 대시보드", description = "스토리지·검사 통계·DELFLAG·모니터링 통합")
 public class DashboardController {
 
     private final DashboardService dashboardService;

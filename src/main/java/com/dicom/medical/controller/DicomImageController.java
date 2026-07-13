@@ -17,7 +17,7 @@ public class DicomImageController {
 
     // UUID로 DICOM 단건 조회 (메타데이터)
     @GetMapping("/{uuid}")
-    @Tag(name = "영상 메타데이터", description = "개별 DICOM 영상(SOP) 메타데이터 조회")
+    @Tag(name = "09. 영상 메타데이터 (SOP 단건)", description = "개별 DICOM 영상(SOP) 메타데이터 조회")
     @Operation(summary = "영상 메타데이터 조회",
             description = "sopInstanceUid(uuid)로 단일 영상의 메타데이터(rows, columns, windowCenter/Width 등)를 반환.")
     public ResponseEntity<DicomImageDto> getDicomImage(@PathVariable String uuid) {

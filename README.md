@@ -18,7 +18,8 @@ DICOM 영상을 업로드하면 **수신 → 전처리 → 추론 → 후처리 
 ## 주요 기능
 
 - **DICOM 수신·저장** — multipart / ZIP / DICOMweb STOW-RS 업로드, 비식별화, Patient–Study–Series–Image 4계층 저장, **AWS S3 저장**(DB엔 S3 key만)
-- **AI 추론 파이프라인** — 윈도잉·리사이즈·정규화 전처리부터 ONNX 추론까지 Java 단독 처리, 단일 영상 / Series / Study 단위 일괄 추론
+- **AI 추론 파이프라인** — 윈도잉·리사이즈·정규화 전처리부터 ONNX 추론까지 Java 단독 처리, 단일 영상 / Series / Study 단위 일괄 추론, 이상 의심 슬라이스만 필터링(`abnormalOnly`) 지원
+- **병명별 판정 보정(op-norm)** — X-ray 18병명은 병명마다 출력 스케일이 달라(예: 심비대 0.05 vs 폐음영 0.20) TorchXRayVision 운영 기준점으로 보정 후 일괄 0.5 임계값 판정
 - **SC 회신** — 추론 소견을 영상에 번인한 Secondary Capture를 새 SOP UID로 생성, S3 업로드 + **Orthanc STOW 회신**
 - **LLM 판독 소견서** — AI 결과(SR) + 의사 소견 메모를 종합해 **AWS Bedrock**(Claude)이 한국어 소견서 생성 → 조회 → 의사 소견 저장 → 판독 확정
 - **웹 뷰어** — 원본/SC를 PNG로 변환해 브라우저에 표시, 정상/이상 판독 결과 시각화
@@ -33,7 +34,7 @@ DICOM 영상을 업로드하면 **수신 → 전처리 → 추론 → 후처리 
 | ------------ | ---------------------------------------------------------- |
 | Backend      | Spring Boot 4.1, Java 21, Spring Data JPA, Spring Security |
 | DICOM        | dcm4che 5.34 (core / imageio / deident / mime)             |
-| AI Inference | ONNX Runtime 1.20 (Java) — 흉부 이진 분류 + X-ray 멀티라벨      |
+| AI Inference | ONNX Runtime 1.20 (Java) — 흉부 이진 분류(CT) + X-ray 18병명 멀티라벨 (TorchXRayVision DenseNet121, op-norm 보정) |
 | LLM          | AWS Bedrock Converse API (Claude)                          |
 | PACS         | Orthanc (STOW 회신)                                         |
 | Database     | MySQL                                                      |
@@ -161,6 +162,8 @@ POST /api/ai/infer                        # 단일 영상. body: { "dicomPath": 
 
 POST /api/ai/infer/series/{seriesId}      # Series 전체 슬라이스 일괄 추론·집계
 POST /api/ai/infer/study/{studyId}        # Study 전체 (Series별 그룹핑 + 전체 집계)
+  ?abnormalOnly=true                      # 이상 의심 슬라이스만 반환 (집계는 전체 기준 유지)
+                                          # 예: "이상 3 / 전체 100" 표시 + 이상 3장만 목록
 
 POST /api/ai/result                       # SC+SR 통합 결과 — Report에 저장(upsert)되어
                                           # 재추론 없이 GET /api/reports/{studyId}로 재조회 가능
@@ -219,8 +222,8 @@ GET /api/admin/stats/delflag              # 삭제/정상 건수 + 파일 용량
 - AWS 자격 증명 (S3 · Bedrock)
 - (선택) Orthanc — `http://localhost:8042`, 미기동 시 SC 회신만 스킵됨
 
-> ONNX 모델(`chest_classifier.onnx`, `xray_multilabel.onnx`)은
-> `src/main/resources/models/`에 포함되어 있어 별도 준비 불필요.
+> ONNX 모델(`chest_classifier.onnx`, `xray_multilabel.onnx`)과 병명별 판정 기준점
+> (`xray_op_threshs.json`)은 `src/main/resources/models/`에 포함되어 있어 별도 준비 불필요.
 
 ### 환경 변수 (`.env`)
 
@@ -244,7 +247,21 @@ AWS_BEDROCK_REGION=ap-northeast-2
 ./gradlew bootRun            # http://localhost:5000
 ```
 
-프론트엔드(Next.js)는 별도 저장소에서 관리.
+### 프론트엔드
+
+- **내장 데모 페이지** — 백엔드가 직접 서빙 (`src/main/resources/static/index.html`).
+  서버 기동 후 `http://localhost:5000/` 접속, 빌드 불필요.
+- **Next.js 프론트** — `../medical-front` (App Router).
+
+```
+cd ../medical-front
+npm install
+npm run dev                  # http://localhost:3000
+```
+
+백엔드 주소는 `medical-front/.env.local`의 `NEXT_PUBLIC_API_BASE`로 설정
+(기본 https://ksw1360.asia, 로컬 백엔드는 http://localhost:5000).
+CORS 허용 오리진은 `SecurityConfig` 참조 (localhost:3000, Amplify 도메인 등).
 
 ---
 
@@ -268,7 +285,8 @@ AWS_BEDROCK_REGION=ap-northeast-2
 ⑦ POST /api/reports/{studyId}/confirm    # (선택) 판독 확정
 ```
 
-> 현재 더미 모델 기반 데모. 표시되는 확률은 파이프라인 검증용이며 의학적 판단 근거가 아니다.
+> 연구·데모용 시스템. 표시되는 확률은 보조 지표이며 의학적 판단의 근거가 아니다.
+> X-ray 확률은 op-norm 보정값으로, 50% 이상 = 해당 병명의 운영 기준점 초과를 의미한다.
 
 ---
 
@@ -279,4 +297,6 @@ AWS_BEDROCK_REGION=ap-northeast-2
 - **DB엔 key만** — 픽셀은 S3에, DB엔 메타데이터와 S3 key만 저장
 - **모델은 클래스패스에** — ONNX 모델을 jar에 포함해 배포 환경에서 별도 파일 배치 불필요
 - **부분 실패 허용** — Series/Study 일괄 추론 시 일부 슬라이스가 원본 없음/추론 실패여도 해당 슬라이스만 실패 표시하고 전체는 정상 응답
+- **병명별 op-norm 보정** — X-ray 멀티라벨 모델의 원시 확률은 병명마다 스케일이 달라 일괄 임계값 판정 시 저스케일 병명(심비대 등)을 놓친다. TorchXRayVision 운영 기준점으로 보정해 0.5 단일 임계값으로 공정하게 판정
+- **집계와 필터 분리** — `abnormalOnly` 필터는 슬라이스 목록만 좁히고 집계(total/abnormalCount 등)는 전체 기준을 유지해, 프론트에서 "이상 N / 전체 M" 표시가 가능
 - **표준 비식별화** — dcm4che `DeIdentifier`로 PS3.15 프로파일 기반 비식별화

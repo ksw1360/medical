@@ -41,6 +41,10 @@ spring:
 server:
   port: 5000
   forward-headers-strategy: framework
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true   # 응답 Content-Type에 charset=UTF-8 명시 (PS 5.1 등 구형 클라이언트 한글 깨짐 방지)
 
 management:
   endpoints:

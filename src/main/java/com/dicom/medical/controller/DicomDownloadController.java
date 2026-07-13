@@ -24,7 +24,7 @@ import java.nio.file.Path;
 @RestController
 @RequestMapping("/api/dicom")
 @RequiredArgsConstructor
-@Tag(name = "DICOM 다운로드", description = "원본/AI결과 .dcm 파일 다운로드")
+@Tag(name = "12. DICOM 다운로드", description = "원본/AI결과 .dcm 파일 다운로드")
 public class DicomDownloadController {
 
     private final DicomStorageService storageService;

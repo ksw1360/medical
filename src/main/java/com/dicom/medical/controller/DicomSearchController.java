@@ -18,7 +18,7 @@ import java.util.Map;
  *          데이터셋 / 연월 / .. / 환자 / 모달리티 / 파일
  * DB 검색(/api/studies)과 별개로, 폴더명만으로 빠르게 거르는 데모용.
  */
-@Tag(name = "검사 조회", description = "S3 폴더(연월/모달리티) 경로 기반 검색")
+@Tag(name = "07. 검사 조회·검색", description = "S3 폴더(연월/모달리티) 경로 기반 검색")
 @RestController
 @RequestMapping("/api/dicom")
 public class DicomSearchController {

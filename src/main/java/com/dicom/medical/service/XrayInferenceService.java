@@ -20,12 +20,17 @@ import java.util.*;
 @Service
 public class XrayInferenceService {
 
-    /** 양성 판정 임계값 (데모용 기본 0.5). 너무 많이/적게 나오면 조정. */
-    private static final float THRESHOLD = 0.3f;;
+    /**
+     * 양성 판정 임계값. op-norm 보정 후에는 0.5 = 각 병명의 운영 기준점(operating point).
+     * (보정 전 원시 확률은 병명마다 스케일이 달라 일괄 임계값을 쓰면
+     *  Cardiomegaly(기준 0.05)처럼 낮은 스케일의 병명을 전부 놓친다)
+     */
+    private static final float THRESHOLD = 0.5f;
 
     private OrtEnvironment env;
     private OrtSession session;
     private String[] labels;                 // xray_labels.json (영문 18개)
+    private float[] opThreshs;               // xray_op_threshs.json (병명별 운영 기준점, TorchXRayVision 'all' 모델)
 
     private final Preprocessor preprocessor;
 
@@ -83,6 +88,25 @@ public class XrayInferenceService {
             if (is == null) throw new IllegalStateException("라벨 없음: /models/xray_labels.json");
             labels = new ObjectMapper().readValue(is, String[].class);
         }
+        // 병명별 운영 기준점 — TorchXRayVision densenet121-res224-all 의 op_threshs (라벨 순서 동일)
+        try (var is = getClass().getResourceAsStream("/models/xray_op_threshs.json")) {
+            if (is == null) throw new IllegalStateException("기준점 없음: /models/xray_op_threshs.json");
+            opThreshs = new ObjectMapper().readValue(is, float[].class);
+        }
+        if (opThreshs.length != labels.length)
+            throw new IllegalStateException("라벨/기준점 개수 불일치: " + labels.length + " vs " + opThreshs.length);
+    }
+
+    /**
+     * op-norm 보정 (TorchXRayVision 방식): 병명별 운영 기준점 t 가 0.5 로 오도록 확률을 재배열.
+     *   p < t  →  0.5 * p / t          (기준 미달 구간을 [0, 0.5)로)
+     *   p >= t →  0.5 + 0.5*(p-t)/(1-t) (기준 초과 구간을 [0.5, 1]로)
+     * 보정 후에는 모든 병명이 동일하게 0.5 임계값으로 판정 가능하다.
+     */
+    private static float opNorm(float p, float t) {
+        if (!(t > 0f && t < 1f)) return p;   // 기준점 이상값 방어
+        return p < t ? 0.5f * p / t
+                     : 0.5f + 0.5f * (p - t) / (1f - t);
     }
 
     /** DICOM 파일 경로 → 전처리 → X-ray 추론 (컨트롤러용 진입점) */
@@ -108,6 +132,10 @@ public class XrayInferenceService {
                 for (float v : p) if (v < -0.01f || v > 1.01f) { looksLikeProb = false; break; }
                 if (!looksLikeProb)
                     for (int i = 0; i < p.length; i++) p[i] = (float) (1.0 / (1.0 + Math.exp(-p[i])));
+
+                // 병명별 op-norm 보정 — 이후 0.5 가 곧 각 병명의 판정 기준점
+                for (int i = 0; i < p.length && i < opThreshs.length; i++)
+                    p[i] = opNorm(p[i], opThreshs[i]);
 
                 // 전체 병명 확률
                 List<Finding> all = new ArrayList<>();
