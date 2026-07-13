@@ -92,7 +92,9 @@ public class SecurityConfig {
                 "https://ksw1360.asia",
                 "https://www.ksw1360.asia",
                 "http://localhost:3000",
-                "https://master.d2ahqjf7y3gh6b.amplifyapp.com"
+                "https://master.d2ahqjf7y3gh6b.amplifyapp.com",
+                "https://hjp7208.site",
+                "https://www.hjp7208.site"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
