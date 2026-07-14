@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Dicom Project BackEnd</title>
+    <style>
+        body { font-family: 새굴림, sans-serif; }
+        .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; }
+        .up   { background: #2ecc71; }
+        .down { background: #e74c3c; }
+    </style>
+</head>
+<body>
+<h1>Medical Dicom Project BackEnd</h1>
+<p id="status"><span class="dot"></span>확인 중...</p>
+<p><a href="/swagger-ui/index.html">Swagger 링크</a></p>
+<p><a href="/actuator/health">Health Check</a></p>
+<p><a href="https://hjp7208.site" target="_blank">프론트엔드</a></p>
+
+<script>
+    async function checkHealth() {
+        const el = document.getElementById('status');
+        try {
+            const res = await fetch('/actuator/health');
+            const data = await res.json();
+            if (data.status === 'UP') {
+                el.innerHTML = '<span class="dot up"></span>서버 정상 (UP)';
+            } else {
+                el.innerHTML = '<span class="dot down"></span>서버 이상 (' + data.status + ')';
+            }
+        } catch (e) {
+            el.innerHTML = '<span class="dot down"></span>서버 응답 없음';
+        }
+    }
+    checkHealth();
+    setInterval(checkHealth, 30000); // 30초마다 갱신
+</script>
+</body>
+</html>
